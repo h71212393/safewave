@@ -1,0 +1,1953 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SafeWave AI Monitor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Noto+Sans+KR:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+/* 사용자가 다크 모드를 명시적으로 요청했으므로 뷰어 테마와 관계없이 동일한 다크 팔레트를 사용 */
+:root, :root[data-theme="light"], :root[data-theme="dark"]{
+  --bg:#030712; --panel:rgba(15,23,42,.80); --panel-solid:#0F172A; --inset:#020617;
+  --bd:rgba(148,163,184,.22); --bd2:rgba(148,163,184,.36);
+  --tx:#F1F5F9; --tx2:#CBD5E1; --mu:#94A3B8;
+  --teal:#2DD4BF; --em:#34D399; --amb:#FBBF24; --rose:#FB7185; --red:#F43F5E; --ind:#818CF8; --cl:#F4A27E;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: light){ :root:not([data-theme="dark"]){ --bg:#030712; } }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --bg:#030712; } }
+*{box-sizing:border-box}
+html{background:#030712;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;min-height:100vh;background:#030712;color:var(--tx);font-family:"Pretendard","Noto Sans KR",system-ui,sans-serif;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;position:relative;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(900px 520px at 8% -8%,rgba(45,212,191,.13),transparent 60%),radial-gradient(800px 600px at 105% 108%,rgba(99,102,241,.14),transparent 60%)}
+header,main,footer{position:relative;z-index:1}
+button{font-family:inherit;color:inherit;cursor:pointer}
+button:focus-visible,canvas:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.glass{background:var(--panel);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid var(--bd);border-radius:16px;box-shadow:0 1px 0 rgba(255,255,255,.05) inset,0 20px 40px -20px rgba(0,0,0,.6)}
+.ico{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;flex-shrink:0}
+.ico svg{width:17px;height:17px}
+
+/* header */
+.hdr{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;background:rgba(3,7,18,.82);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid var(--bd)}
+.hdr-in{max-width:1440px;margin:0 auto;padding:12px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.logo{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#14B8A6,#4F46E5);display:grid;place-items:center;color:#fff;box-shadow:0 8px 24px -6px rgba(45,212,191,.55)}
+.brand{margin-right:auto}
+.brand .t{display:flex;align-items:center;gap:8px}
+.brand h1{margin:0;font-size:19px;font-weight:800;letter-spacing:-.01em;color:#fff}
+.tag{font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(45,212,191,.16);color:#5EEAD4;border:1px solid rgba(45,212,191,.4)}
+.brand p{margin:1px 0 0;font-size:12px;color:var(--mu)}
+.chip{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;background:rgba(2,6,23,.7);border:1px solid var(--bd2);font-size:13px;color:var(--tx2)}
+.chip strong{color:#fff;font-weight:700}
+.chip .live{width:8px;height:8px;border-radius:50%;background:var(--em);box-shadow:0 0 10px var(--em)}
+.chip.clock{color:#5EEAD4;font-family:var(--mono);font-weight:700}
+.pill{display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:10px;font-weight:800;font-size:14px;border:1px solid}
+.pill i{width:9px;height:9px;border-radius:50%;background:currentColor;box-shadow:0 0 10px currentColor}
+.pill.normal{color:#6EE7B7;background:rgba(16,185,129,.16);border-color:rgba(52,211,153,.5)}
+.pill.grace{color:#FCD34D;background:rgba(245,158,11,.18);border-color:rgba(251,191,36,.6)}
+.pill.emergency{color:#fff;background:#E11D48;border-color:#FB7185;box-shadow:0 0 22px rgba(244,63,94,.6)}
+@media (prefers-reduced-motion:no-preference){.pill.emergency{animation:alarm 1s ease-in-out infinite}.pill.grace i{animation:fade 1s ease-in-out infinite}}
+@keyframes alarm{50%{background:#9F1239}}
+@keyframes fade{50%{opacity:.25}}
+
+.wrap{max-width:1440px;margin:0 auto;padding:20px;display:flex;flex-direction:column;gap:18px}
+
+/* hero */
+.hero{padding:22px;position:relative;overflow:hidden;border-width:2px;transition:border-color .4s,background .4s}
+.hero .glow{position:absolute;right:-80px;bottom:-80px;width:340px;height:340px;border-radius:50%;filter:blur(60px);pointer-events:none;transition:background .4s}
+.hero.normal{border-color:rgba(52,211,153,.45)} .hero.normal .glow{background:rgba(16,185,129,.18)}
+.hero.grace{border-color:rgba(251,191,36,.7);background:rgba(45,26,0,.78)} .hero.grace .glow{background:rgba(245,158,11,.25)}
+.hero.emergency{border-color:#F43F5E;background:rgba(69,10,10,.82)} .hero.emergency .glow{background:rgba(244,63,94,.32)}
+.hero-top{display:flex;gap:18px;align-items:flex-start;position:relative}
+.sbox{width:76px;height:76px;border-radius:18px;display:grid;place-items:center;flex-shrink:0;border:1px solid;transition:all .3s}
+.sbox svg{width:36px;height:36px}
+.hero.normal .sbox{background:rgba(16,185,129,.16);border-color:rgba(52,211,153,.45);color:#34D399}
+.hero.grace .sbox{background:rgba(245,158,11,.18);border-color:rgba(251,191,36,.55);color:#FBBF24}
+.hero.emergency .sbox{background:rgba(244,63,94,.22);border-color:rgba(251,113,133,.6);color:#FB7185}
+.hero h2{margin:6px 0 4px;font-size:21px;font-weight:800;color:#fff;line-height:1.35}
+.hero p{margin:0;font-size:14px;color:var(--tx2);max-width:760px;line-height:1.65}
+.sbadge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:7px;font-size:13px;font-weight:800;letter-spacing:.03em;border:1px solid}
+.hero.normal .sbadge{background:rgba(16,185,129,.18);color:#6EE7B7;border-color:rgba(52,211,153,.45)}
+.hero.grace .sbadge{background:rgba(245,158,11,.22);color:#FCD34D;border-color:rgba(251,191,36,.55)}
+.hero.emergency .sbadge{background:rgba(244,63,94,.28);color:#FECDD3;border-color:rgba(251,113,133,.6)}
+.gbadge{display:none;margin-left:8px;padding:4px 10px;border-radius:7px;font-size:13px;font-weight:700;background:rgba(245,158,11,.3);color:#FEF3C7;border:1px solid rgba(251,191,36,.6)}
+.hero.grace .gbadge{display:inline-flex;gap:4px}
+.gbadge b{font-family:var(--mono);font-size:15px;text-decoration:underline}
+@media (max-width:640px){.hero-top{flex-direction:column}.sbox{width:60px;height:60px}}
+
+.steps{margin-top:20px;padding-top:18px;border-top:1px solid var(--bd);display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;position:relative}
+@media (max-width:860px){.steps{grid-template-columns:minmax(0,1fr)}}
+.step{border-radius:12px;padding:14px;background:rgba(30,41,59,.55);border:1px solid rgba(148,163,184,.3);transition:all .3s}
+.step .h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.step .n{display:flex;align-items:center;gap:8px;font-weight:800;font-size:14px;color:#fff}
+.step .n>span:first-child{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:800;background:#334155;color:#E2E8F0}
+.step .st{font-size:12px;font-weight:700;color:var(--mu);white-space:nowrap}
+.step p{margin:0;font-size:12.5px;color:var(--tx2);line-height:1.55}
+.step .bar{display:none;height:5px;border-radius:3px;background:rgba(251,191,36,.2);margin-top:10px;overflow:hidden}
+.step .bar i{display:block;height:100%;width:100%;background:#FBBF24;box-shadow:0 0 10px #FBBF24}
+.step.active{background:rgba(120,53,15,.55);border-color:#FBBF24;box-shadow:0 0 0 1px rgba(251,191,36,.3),0 0 22px -6px rgba(251,191,36,.6)}
+.step.active .n>span:first-child{background:#FBBF24;color:#1C1917}
+.step.active .st{color:#FCD34D}
+.step.active .bar{display:block}
+.step.done{background:rgba(20,83,45,.35);border-color:rgba(52,211,153,.55)}
+.step.done .n>span:first-child{background:#34D399;color:#052E16}
+.step.done .st{color:#6EE7B7}
+.step.alert{background:rgba(136,19,55,.6);border-color:#FB7185;box-shadow:0 0 24px -6px rgba(244,63,94,.7)}
+.step.alert .n>span:first-child{background:#F43F5E;color:#fff}
+.step.alert .st{color:#FECDD3}
+
+/* kpi */
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+@media (max-width:900px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.kpi{padding:14px 16px;display:flex;align-items:center;gap:12px}
+.kpi .ico{width:42px;height:42px;border-radius:11px}
+.kpi .l{font-size:12px;color:var(--mu);font-weight:500}
+.kpi .v{font-size:20px;font-weight:800;color:#fff;line-height:1.25}
+.kpi .v small{font-size:12px;color:var(--mu);font-weight:500;margin-left:3px}
+
+/* grid */
+.grid{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:18px;align-items:start}
+@media (max-width:1100px){.grid{grid-template-columns:minmax(0,1fr)}}
+.col{display:flex;flex-direction:column;gap:18px;min-width:0}
+.panel{padding:18px}
+.ph{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.ph .tt{display:flex;align-items:center;gap:10px}
+.ph h3{margin:0;font-size:15px;font-weight:800;color:#fff}
+.ph p{margin:1px 0 0;font-size:12px;color:var(--mu)}
+
+/* radar */
+.seg{display:flex;padding:3px;border-radius:10px;background:var(--inset);border:1px solid var(--bd2)}
+.seg button{border:0;background:transparent;padding:6px 14px;border-radius:7px;font-weight:800;font-size:13px;color:var(--mu);min-height:34px}
+.seg button[aria-pressed="true"]{background:rgba(45,212,191,.2);color:#5EEAD4;box-shadow:0 0 0 1px rgba(45,212,191,.5) inset}
+.map{position:relative;border-radius:12px;overflow:hidden;border:1px solid rgba(45,212,191,.35);box-shadow:0 0 0 1px rgba(2,6,23,.8) inset,0 0 30px -10px rgba(45,212,191,.35)}
+.map canvas{display:block;width:100%;height:460px;background:#020617;touch-action:pan-y}
+@media (max-width:640px){.map canvas{height:350px}}
+.coord{position:absolute;top:12px;left:12px;padding:10px 14px;border-radius:10px;background:rgba(2,6,23,.88);border:1px solid rgba(45,212,191,.45);box-shadow:0 0 18px -6px rgba(45,212,191,.5)}
+.coord .lb{font-size:11px;font-weight:700;color:var(--tx2);margin-bottom:4px;letter-spacing:.04em}
+.coord .r{display:flex;justify-content:space-between;gap:18px;font-family:var(--mono);font-size:15px;font-weight:700;line-height:1.55}
+.coord .r span:first-child{color:var(--mu);font-weight:500}
+.coord .xy{color:#5EEAD4;text-shadow:0 0 8px rgba(45,212,191,.6)}
+.coord .z{color:#A5B4FC;text-shadow:0 0 8px rgba(129,140,248,.6)}
+.legend{position:absolute;right:12px;bottom:12px;display:flex;gap:12px;padding:6px 10px;border-radius:8px;background:rgba(2,6,23,.88);border:1px solid var(--bd2);font-size:12px;color:var(--tx2)}
+.legend span{display:flex;align-items:center;gap:5px}
+.legend i{width:8px;height:8px;border-radius:50%}
+.hint{position:absolute;left:12px;bottom:12px;padding:4px 8px;border-radius:6px;background:rgba(2,6,23,.7);font-size:11px;color:var(--mu)}
+.tests{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:14px}
+@media (max-width:640px){.tests{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.tb{min-height:46px;border-radius:12px;border:1px solid;font-size:13.5px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:7px;transition:background .15s,box-shadow .15s}
+.tb svg{width:15px;height:15px}
+.tb.ok{background:rgba(6,78,59,.6);border-color:rgba(52,211,153,.55);color:#A7F3D0}.tb.ok:hover{background:rgba(6,95,70,.85);box-shadow:0 0 16px -4px rgba(52,211,153,.6)}
+.tb.wn{background:rgba(69,26,3,.65);border-color:rgba(251,191,36,.55);color:#FDE68A}.tb.wn:hover{background:rgba(120,53,15,.85);box-shadow:0 0 16px -4px rgba(251,191,36,.6)}
+.tb.cr{background:rgba(76,5,25,.7);border-color:rgba(251,113,133,.6);color:#FECDD3}.tb.cr:hover{background:rgba(136,19,55,.85);box-shadow:0 0 16px -4px rgba(244,63,94,.7)}
+.tb.in{background:rgba(30,27,75,.7);border-color:rgba(129,140,248,.55);color:#C7D2FE}.tb.in:hover{background:rgba(49,46,129,.85);box-shadow:0 0 16px -4px rgba(129,140,248,.6)}
+.tb:disabled{opacity:.38;cursor:not-allowed;box-shadow:none}
+
+/* chart */
+.vit{display:flex;gap:20px}
+.vit div{text-align:right}
+.vit b{display:block;font-family:var(--mono);font-size:22px;font-weight:700;line-height:1.1}
+.vit small{font-size:11px;color:var(--mu)}
+.chart{border-radius:12px;overflow:hidden;border:1px solid var(--bd2);background:#020617}
+.chart canvas{display:block;width:100%;height:220px}
+.ckey{display:flex;gap:16px;margin-top:10px;font-size:12px;color:var(--tx2)}
+.ckey span{display:flex;align-items:center;gap:6px}
+.ckey i{width:18px;height:3px;border-radius:2px}
+
+/* AI */
+.badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:6px;border:1px solid var(--bd2);color:var(--tx2);background:rgba(30,41,59,.7)}
+.badge.ready{color:#FDBA9A;border-color:rgba(244,162,126,.5);background:rgba(124,45,18,.35)}
+.badge.work{color:#FCD34D;border-color:rgba(251,191,36,.55);background:rgba(120,53,15,.4)}
+.badge.done{color:#6EE7B7;border-color:rgba(52,211,153,.5);background:rgba(6,78,59,.45)}
+.aib{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.ab{text-align:left;padding:11px;border-radius:12px;background:rgba(30,41,59,.85);border:1px solid rgba(244,162,126,.35);display:flex;flex-direction:column;gap:3px;min-height:64px;transition:border-color .15s,background .15s}
+.ab:hover{border-color:#F4A27E;background:rgba(51,65,85,.9)}
+.ab b{font-size:13px;font-weight:800;display:flex;align-items:center;gap:6px}
+.ab b svg{width:14px;height:14px;flex-shrink:0}
+.ab span{font-size:11px;color:var(--mu)}
+.ab:disabled{opacity:.5;cursor:wait}
+.tts{margin-top:12px;padding:11px 13px;border-radius:12px;background:var(--inset);border:1px solid rgba(251,191,36,.35)}
+.tts .top{display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--tx2);margin-bottom:4px}
+.tts .top button{border:1px solid rgba(251,191,36,.5);background:rgba(120,53,15,.35);color:#FDE68A;font-size:12px;font-weight:700;padding:4px 10px;border-radius:7px;min-height:30px}
+.tts p{margin:0;color:#FDE68A;font-size:14px;font-style:italic;font-weight:500}
+.eq{display:inline-flex;gap:2px;align-items:flex-end;height:12px;margin-left:6px;vertical-align:middle;visibility:hidden}
+.eq.on{visibility:visible}.eq i{width:3px;height:4px;background:#FBBF24}
+@media (prefers-reduced-motion:no-preference){.eq.on i{animation:eq .45s ease-in-out infinite alternate}.eq.on i:nth-child(2){animation-delay:.15s}.eq.on i:nth-child(3){animation-delay:.3s}}
+@keyframes eq{to{height:12px}}
+.out{margin-top:12px;min-height:190px;max-height:380px;overflow:auto;padding:13px;border-radius:12px;background:var(--inset);border:1px solid var(--bd2);font-size:13px;line-height:1.7;color:var(--tx2)}
+.out .empty{color:var(--mu);text-align:center;padding:44px 10px;font-style:italic}
+.out strong{color:#5EEAD4}
+.out .src{margin-top:10px;font-size:11px;color:var(--mu)}
+.out .src.ai{color:var(--cl)}
+.out pre{margin:8px 0 0;white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size:12px;color:var(--tx)}
+.out pre .k{color:#5EEAD4}.out pre .s{color:#FDE68A}.out pre .n{color:#A5B4FC}
+.cur::after{content:"▍";color:var(--cl)}
+@media (prefers-reduced-motion:no-preference){.cur::after{animation:fade .9s steps(2) infinite}}
+.risk{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 12px;border-radius:10px;border:1px solid;margin-bottom:6px}
+.risk b{font-size:15px}
+
+.log{display:flex;flex-direction:column;gap:6px;max-height:240px;overflow:auto;margin:0;padding:0 2px 0 0;list-style:none}
+.log li{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;border-radius:8px;border:1px solid var(--bd);background:rgba(15,23,42,.6);font-size:12.5px;color:var(--tx2)}
+.log li .t{font-family:var(--mono);font-size:11px;color:var(--mu);flex-shrink:0}
+.log li.ok{border-color:rgba(52,211,153,.35);background:rgba(6,78,59,.28);color:#A7F3D0}
+.log li.wn{border-color:rgba(251,191,36,.4);background:rgba(120,53,15,.28);color:#FDE68A}
+.log li.cr{border-color:rgba(251,113,133,.45);background:rgba(136,19,55,.3);color:#FECDD3}
+.log li.ai{border-color:rgba(244,162,126,.4);background:rgba(124,45,18,.25);color:#FDBA9A}
+
+/* modal */
+.modal{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.8);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.modal.on{display:flex}
+.mbox{width:100%;max-width:480px;max-height:calc(100vh - 40px);overflow:auto;border-radius:18px;padding:22px;background:rgba(69,10,10,.92);border:2px solid #F43F5E;box-shadow:0 0 60px -10px rgba(244,63,94,.7)}
+.mhead{display:flex;gap:12px;align-items:center}
+.mhead .ico{width:48px;height:48px;border-radius:12px;background:rgba(244,63,94,.22);border:1px solid rgba(251,113,133,.5);color:#FB7185}
+.mhead .ico svg{width:26px;height:26px}
+.mbox h2{margin:0;font-size:20px;font-weight:800;color:#fff}
+.mbox .sub{font-size:13px;color:#FECDD3}
+.mbox .meta{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-family:var(--mono);font-size:12px;color:#FECDD3;margin:16px 0 8px}
+.mbox .sum{padding:12px;border-radius:12px;background:rgba(76,5,25,.6);border:1px solid rgba(251,113,133,.4);font-size:13px;line-height:1.7;color:#F1F5F9;max-height:260px;overflow:auto}
+.mbox .sum strong{color:#fff}
+.mbox button{margin-top:16px;width:100%;min-height:50px;border:0;border-radius:12px;background:#E11D48;color:#fff;font-weight:800;font-size:15px;box-shadow:0 10px 24px -8px rgba(225,29,72,.8)}
+.foot{max-width:1440px;margin:6px auto 0;padding:14px 20px 24px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--mu);border-top:1px solid var(--bd)}
+/* ===== v4 additions ===== */
+.hdr-in{padding-bottom:8px}
+.nav{max-width:1440px;margin:0 auto;padding:0 20px;display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+.nav::-webkit-scrollbar{display:none}
+.nav button{position:relative;flex-shrink:0;display:flex;align-items:center;gap:8px;background:transparent;border:0;padding:11px 16px 13px;font-size:14px;font-weight:700;color:var(--mu);min-height:44px;border-radius:10px 10px 0 0;transition:color .15s,background .15s}
+.nav button svg{width:16px;height:16px}
+.nav button:hover{color:var(--tx);background:rgba(148,163,184,.08)}
+.nav button[aria-current="page"]{color:#5EEAD4;background:rgba(45,212,191,.1)}
+.nav button[aria-current="page"]::after{content:"";position:absolute;left:12px;right:12px;bottom:0;height:3px;border-radius:3px 3px 0 0;background:#2DD4BF;box-shadow:0 0 12px #2DD4BF}
+.nav .cnt{font-family:var(--mono);font-size:11px;padding:1px 7px;border-radius:99px;background:rgba(148,163,184,.18);color:var(--tx2)}
+.nav .cnt.hot{background:#E11D48;color:#fff}
+.view[hidden]{display:none!important}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 390px;gap:18px;align-items:start}
+@media (max-width:1180px){.layout{grid-template-columns:minmax(0,1fr)}}
+.grid{grid-template-columns:minmax(0,1fr)}
+.side{display:flex;flex-direction:column;gap:18px;min-width:0}
+
+/* subject card */
+.subj-top{display:flex;gap:14px;align-items:center}
+.avatar{width:58px;height:58px;border-radius:16px;display:grid;place-items:center;font-size:24px;font-weight:800;color:#fff;background:linear-gradient(135deg,#0D9488,#4338CA);box-shadow:0 8px 20px -8px rgba(45,212,191,.6);flex-shrink:0;position:relative}
+.avatar::after{content:"";position:absolute;right:-3px;bottom:-3px;width:14px;height:14px;border-radius:50%;border:3px solid #0F172A;background:var(--em)}
+.avatar.grace::after{background:var(--amb)}.avatar.emergency::after{background:var(--red)}
+.subj-name{font-size:19px;font-weight:800;color:#fff;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.subj-meta{font-size:13px;color:var(--tx2);margin-top:2px}
+.sample{font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;background:rgba(148,163,184,.16);color:var(--mu);border:1px solid var(--bd)}
+.presence{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:800;padding:3px 9px;border-radius:99px;margin-top:6px}
+.presence.normal{background:rgba(16,185,129,.18);color:#6EE7B7}
+.presence.grace{background:rgba(245,158,11,.22);color:#FCD34D}
+.presence.emergency{background:#E11D48;color:#fff}
+.dl{display:grid;grid-template-columns:76px minmax(0,1fr);gap:9px 12px;margin:16px 0 0;font-size:13px}
+.dl dt{color:var(--mu);font-weight:500}
+.dl dd{margin:0;color:var(--tx);font-weight:500;word-break:keep-all}
+.dl dd.warn{color:#FCD34D}
+.more{margin-top:14px;width:100%;min-height:40px;border-radius:10px;border:1px solid var(--bd2);background:rgba(30,41,59,.6);font-size:13px;font-weight:700;color:var(--tx2)}
+.more:hover{border-color:#5EEAD4;color:#5EEAD4}
+
+/* contacts */
+.contacts{display:flex;flex-direction:column;gap:8px}
+.ct{display:grid;grid-template-columns:46px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px;border-radius:12px;background:rgba(2,6,23,.6);border:1px solid var(--bd)}
+.ct .ci{width:46px;height:40px;border-radius:10px;display:grid;place-items:center;font-weight:800;font-size:11.5px;background:rgba(129,140,248,.16);color:#A5B4FC;border:1px solid rgba(129,140,248,.35)}
+.ct .cn{font-size:14px;font-weight:800;color:#fff;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.ct .cr{font-size:12px;color:var(--mu)}
+.ct .cp{font-family:var(--mono);font-size:12.5px;color:var(--tx2);margin-top:1px}
+.ct .sent{display:none;font-size:10.5px;font-weight:800;padding:1px 6px;border-radius:5px;background:#E11D48;color:#fff}
+.ct a{display:grid;place-items:center;width:40px;height:40px;border-radius:10px;background:rgba(16,185,129,.16);border:1px solid rgba(52,211,153,.45);color:#6EE7B7}
+.ct a svg{width:18px;height:18px}
+.ct a:hover{background:rgba(16,185,129,.3)}
+.contacts.alerting .ct{border-color:rgba(251,113,133,.45);background:rgba(76,5,25,.35)}
+.contacts.alerting .ct .sent{display:inline-block}
+.e119{margin-top:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 12px;border-radius:12px;border:1px dashed rgba(251,113,133,.5);background:rgba(76,5,25,.25)}
+.e119 b{font-size:14px;color:#FECDD3;display:flex;align-items:center;gap:8px}
+.e119 span{font-size:12px;font-weight:700;padding:3px 8px;border-radius:6px;background:rgba(244,63,94,.18);color:#FDA4AF}
+.e119.on{border-style:solid;border-color:#F43F5E;background:rgba(136,19,55,.55)}
+.e119.on span{background:#E11D48;color:#fff}
+
+.recent{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.link{border:0;background:transparent;color:#5EEAD4;font-size:12.5px;font-weight:700;padding:6px 4px;min-height:32px}
+
+/* log view */
+.lhead{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chips button{border:1px solid var(--bd2);background:rgba(2,6,23,.6);color:var(--tx2);font-size:13px;font-weight:700;padding:6px 12px;border-radius:99px;min-height:36px}
+.chips button[aria-pressed="true"]{background:rgba(45,212,191,.18);border-color:#2DD4BF;color:#5EEAD4}
+.ghost{border:1px solid var(--bd2);background:transparent;color:var(--tx2);font-size:13px;font-weight:700;padding:7px 14px;border-radius:10px;min-height:38px}
+.ghost:hover{border-color:#FB7185;color:#FDA4AF}
+.lstats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}
+@media (max-width:760px){.lstats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.lstat{padding:14px;border-radius:12px;background:rgba(2,6,23,.6);border:1px solid var(--bd)}
+.lstat b{display:block;font-family:var(--mono);font-size:26px;font-weight:700;line-height:1.2}
+.lstat span{font-size:12px;color:var(--mu)}
+.ltable{width:100%;border-collapse:collapse;font-size:13px}
+.ltable th{text-align:left;font-size:12px;font-weight:700;color:var(--mu);padding:10px 12px;border-bottom:1px solid var(--bd2);white-space:nowrap}
+.ltable td{padding:11px 12px;border-bottom:1px solid var(--bd);color:var(--tx2);vertical-align:top}
+.ltable td.t{font-family:var(--mono);font-size:12px;color:var(--mu);white-space:nowrap}
+.ltable tr:hover td{background:rgba(148,163,184,.05)}
+.ty{display:inline-block;font-size:11px;font-weight:800;padding:2px 8px;border-radius:6px;white-space:nowrap}
+.ty.ok{background:rgba(16,185,129,.18);color:#6EE7B7}.ty.wn{background:rgba(245,158,11,.2);color:#FCD34D}.ty.cr{background:rgba(244,63,94,.22);color:#FDA4AF}.ty.ai{background:rgba(244,162,126,.18);color:#FDBA9A}.ty.sys{background:rgba(148,163,184,.16);color:var(--tx2)}
+.tscroll{overflow-x:auto;border-radius:12px;border:1px solid var(--bd);background:rgba(2,6,23,.4)}
+.empty-row{text-align:center;color:var(--mu);padding:40px 10px!important}
+
+/* forms */
+.fgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:980px){.fgrid{grid-template-columns:minmax(0,1fr)}}
+.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+@media (max-width:560px){.fields{grid-template-columns:minmax(0,1fr)}}
+.f{display:flex;flex-direction:column;gap:6px;min-width:0}
+.f.full{grid-column:1/-1}
+.f label,.f .lab{font-size:12.5px;font-weight:700;color:var(--tx2)}
+.f input,.f select,.f textarea{width:100%;background:#020617;border:1px solid var(--bd2);border-radius:10px;color:var(--tx);font-family:inherit;font-size:14px;padding:10px 12px;min-height:44px}
+.f textarea{min-height:76px;resize:vertical}
+.f input:focus,.f select:focus,.f textarea:focus{outline:none;border-color:#2DD4BF;box-shadow:0 0 0 3px rgba(45,212,191,.2)}
+.f .help{font-size:11.5px;color:var(--mu)}
+.cedit{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.2fr) 40px;gap:8px;align-items:end;padding:12px;border-radius:12px;background:rgba(2,6,23,.5);border:1px solid var(--bd);margin-bottom:10px}
+@media (max-width:560px){.cedit{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.cedit .f:nth-child(3){grid-column:1/-1}}
+.cedit .del{width:40px;height:44px;border-radius:10px;border:1px solid rgba(251,113,133,.4);background:transparent;color:#FDA4AF;font-size:18px}
+.actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:18px}
+.primary{border:0;border-radius:10px;background:linear-gradient(135deg,#14B8A6,#0D9488);color:#042F2E;font-weight:800;font-size:14px;padding:0 20px;min-height:44px;box-shadow:0 8px 20px -8px rgba(45,212,191,.7)}
+.saved{font-size:13px;font-weight:700;color:#6EE7B7;align-self:center;opacity:0;transition:opacity .2s}
+.saved.on{opacity:1}
+.range{display:flex;align-items:center;gap:12px}
+.range input[type=range]{flex:1;accent-color:#2DD4BF;min-height:auto;padding:0;border:0;background:transparent}
+.range output{font-family:var(--mono);font-weight:700;color:#5EEAD4;min-width:58px;text-align:right}
+.trow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--bd)}
+.trow:last-child{border-bottom:0}
+.trow b{display:block;font-size:14px;color:#fff}
+.trow span{font-size:12px;color:var(--mu)}
+.sw{position:relative;width:50px;height:28px;border-radius:99px;border:0;background:#334155;flex-shrink:0;padding:0}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#E2E8F0;transition:transform .15s}
+.sw[aria-checked="true"]{background:#14B8A6;box-shadow:0 0 12px -2px rgba(45,212,191,.7)}
+.sw[aria-checked="true"]::after{transform:translateX(22px)}
+.sysinfo{display:grid;grid-template-columns:110px minmax(0,1fr);gap:10px 12px;font-size:13px}
+.sysinfo dt{color:var(--mu)}.sysinfo dd{margin:0;color:var(--tx);font-family:var(--mono);font-size:12.5px}
+.vtitle{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:2px}
+.vtitle h2{margin:0;font-size:22px;font-weight:800;color:#fff}
+.vtitle p{margin:2px 0 0;font-size:13px;color:var(--mu)}
+@media (max-width:640px){
+  .hdr-in{gap:8px;padding:8px 14px}
+  .logo{width:34px;height:34px;border-radius:10px}
+  .brand h1{font-size:16px}
+  .brand p,.tag,.hdr .chip:not(.clock){display:none}
+  .chip.clock{font-size:11px;padding:6px 8px;margin-left:auto}
+  .pill{padding:6px 10px;font-size:12px}
+  .nav{padding:0 10px}
+  .nav button{padding:9px 12px 11px;font-size:13px}
+  .wrap{padding:14px}
+  .hero{padding:16px}
+}
+/* ===== v5: 원본 SafeWave 레이아웃 복원 ===== */
+.hero-top{justify-content:space-between}
+.hero-main{display:flex;gap:18px;align-items:flex-start;min-width:0}
+.simctl{flex-shrink:0;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+.simctl .lb{font-size:12px;font-weight:700;color:var(--tx2);letter-spacing:.03em}
+.simctl .btns{display:grid;grid-template-columns:repeat(4,auto);gap:8px}
+.simctl .tb{min-height:42px;padding:0 14px;font-size:13px;border-radius:11px}
+@media (max-width:1180px){.hero-top{flex-direction:column}.simctl{align-items:stretch;width:100%}.simctl .btns{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media (max-width:640px){.simctl .btns{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.live-grid{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:18px;align-items:start}
+@media (max-width:1100px){.live-grid{grid-template-columns:minmax(0,1fr)}}
+.duo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px}
+@media (max-width:760px){.duo{grid-template-columns:minmax(0,1fr)}}
+.tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.zbtn{display:flex;align-items:center;gap:6px;min-height:36px;padding:0 12px;border-radius:10px;border:1px solid var(--bd2);background:rgba(2,6,23,.6);font-size:12.5px;font-weight:700;color:var(--tx2)}
+.zbtn svg{width:14px;height:14px}
+.zbtn:hover{border-color:#2DD4BF;color:#5EEAD4}
+.zbtn.on{background:#14B8A6;border-color:#2DD4BF;color:#042F2E;box-shadow:0 0 16px -4px rgba(45,212,191,.8)}
+.zbtn.rst{border-color:rgba(251,113,133,.45);color:#FDA4AF}
+.zbtn[hidden]{display:none}
+.map.editing{border-color:#2DD4BF;box-shadow:0 0 0 2px rgba(45,212,191,.6),0 0 30px -6px rgba(45,212,191,.7)}
+.editbadge{position:absolute;top:12px;right:12px;display:none;align-items:center;gap:6px;padding:6px 10px;border-radius:8px;background:rgba(20,184,166,.22);border:1px solid #2DD4BF;color:#99F6E4;font-size:12px;font-weight:800}
+.map.editing .editbadge{display:flex}
+.zlist{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.zchip{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:4px 10px;border-radius:99px;background:rgba(16,185,129,.14);border:1px solid rgba(52,211,153,.4);color:#A7F3D0}
+.zchip.custom{background:rgba(45,212,191,.14);border-color:rgba(45,212,191,.5);color:#99F6E4}
+.zchip small{font-family:var(--mono);font-weight:500;color:var(--mu)}
+
+.qa{margin-top:14px;padding-top:14px;border-top:1px solid var(--bd)}
+.qa .top{display:flex;align-items:center;justify-content:space-between;font-size:12.5px;margin-bottom:8px}
+.qa .top b{color:#FDBA9A;display:flex;align-items:center;gap:6px}
+.qa .top span{font-family:var(--mono);font-size:11px;color:var(--mu)}
+.qform{display:flex;gap:8px}
+.qform input{flex:1;min-width:0;background:#020617;border:1px solid var(--bd2);border-radius:11px;color:var(--tx);font-family:inherit;font-size:13.5px;padding:0 12px;min-height:44px}
+.qform input::placeholder{color:#64748B}
+.qform input:focus{outline:none;border-color:#F4A27E;box-shadow:0 0 0 3px rgba(244,162,126,.2)}
+.qform button{flex-shrink:0;border:0;border-radius:11px;background:linear-gradient(135deg,#EA580C,#C2410C);color:#fff;font-weight:800;font-size:13.5px;padding:0 16px;min-height:44px;box-shadow:0 8px 18px -8px rgba(234,88,12,.8)}
+.qform button:disabled{opacity:.5}
+.qchips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.qchips button{border:1px solid var(--bd2);background:rgba(30,41,59,.7);color:var(--tx2);font-size:12px;font-weight:600;padding:6px 10px;border-radius:9px;min-height:34px}
+.qchips button:hover{border-color:#F4A27E;color:#FDBA9A}
+.out .q{font-size:12.5px;font-weight:800;color:#FDBA9A;padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid var(--bd)}
+
+.rules{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px;border-radius:14px;background:linear-gradient(135deg,rgba(49,46,129,.55),rgba(15,23,42,.8) 55%,rgba(19,78,74,.5));border:1px solid rgba(167,139,250,.4)}
+.rules .tg{font-size:13px;font-weight:800;color:#99F6E4;display:flex;align-items:center;gap:6px;margin-bottom:8px}
+.rules ol{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:7px}
+.rules li{display:flex;gap:8px;font-size:13px;color:var(--tx);line-height:1.5}
+.rules li i{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:7px}
+.rules .art{width:58px;height:58px;border-radius:14px;display:grid;place-items:center;flex-shrink:0;background:rgba(167,139,250,.18);border:1px solid rgba(167,139,250,.45);color:#C4B5FD}
+.rules .art svg{width:28px;height:28px}
+.rules.grace{border-color:rgba(251,191,36,.55);background:linear-gradient(135deg,rgba(120,53,15,.55),rgba(15,23,42,.85))}
+.rules.emergency{border-color:rgba(251,113,133,.6);background:linear-gradient(135deg,rgba(136,19,55,.6),rgba(15,23,42,.85))}
+.refresh{border:0;background:transparent;color:#C4B5FD;font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:5px;padding:6px 4px;min-height:32px}
+.refresh:hover{color:#DDD6FE}
+.refresh:disabled{opacity:.5}
+
+.notices{display:flex;flex-direction:column;gap:8px}
+.ntc{width:100%;text-align:left;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 12px;border-radius:12px;background:rgba(2,6,23,.6);border:1px solid var(--bd);transition:border-color .15s}
+.ntc:hover{border-color:#2DD4BF}
+.ntc .tl{display:flex;align-items:center;gap:8px;min-width:0}
+.ntc .tl b{font-size:13.5px;font-weight:700;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ntc .ds{font-size:12px;color:var(--mu);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ntc .dt{font-family:var(--mono);font-size:11.5px;color:var(--mu);flex-shrink:0}
+.nb{flex-shrink:0;font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:5px;border:1px solid}
+.nb.must{background:rgba(244,63,94,.18);border-color:rgba(251,113,133,.5);color:#FDA4AF}
+.nb.info{background:rgba(45,212,191,.16);border-color:rgba(45,212,191,.45);color:#5EEAD4}
+.nb.feat{background:rgba(244,162,126,.16);border-color:rgba(244,162,126,.45);color:#FDBA9A}
+
+.dlg{position:fixed;inset:0;z-index:55;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.75);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.dlg.on{display:flex}
+.dlg .box{width:100%;max-width:460px;max-height:calc(100vh - 40px);overflow:auto;border-radius:18px;padding:20px;background:rgba(15,23,42,.96);border:1px solid rgba(45,212,191,.45);box-shadow:0 30px 60px -20px rgba(0,0,0,.8),0 0 40px -16px rgba(45,212,191,.5)}
+.dlg h3{margin:0;font-size:17px;font-weight:800;color:#fff}
+.dlg .meta{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-family:var(--mono);font-size:12px;color:var(--mu)}
+.dlg .body{margin:14px 0 0;padding-top:14px;border-top:1px solid var(--bd);font-size:14px;line-height:1.7;color:var(--tx2)}
+.dlg .row{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+.dlg .x{float:right;border:0;background:transparent;color:var(--mu);font-size:22px;line-height:1;width:36px;height:36px;margin:-6px -6px 0 0}
+.dlg .x:hover{color:#fff}
+
+/* ---------- 실시간 레이더 연결 ---------- */
+.livebar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:14px 18px;margin-bottom:18px}
+.livebar .lvst{display:flex;align-items:center;gap:12px;min-width:0;flex:1 1 320px}
+.lvdot{width:12px;height:12px;border-radius:50%;background:#64748B;flex:none;box-shadow:0 0 0 4px rgba(100,116,139,.18)}
+.lvdot.on{background:var(--em);box-shadow:0 0 0 4px rgba(52,211,153,.2),0 0 14px rgba(52,211,153,.8);animation:lvp 1.6s infinite}
+.lvdot.stale{background:var(--amb);box-shadow:0 0 0 4px rgba(251,191,36,.2)}
+@keyframes lvp{50%{box-shadow:0 0 0 7px rgba(52,211,153,.05),0 0 18px rgba(52,211,153,.9)}}
+.lvst b{display:block;font-size:14.5px;color:var(--tx)}
+.lvst small{display:block;font-size:12.5px;color:var(--mu);margin-top:2px;line-height:1.45}
+.lvbtns{display:flex;gap:8px;flex-wrap:wrap}
+.lvb{min-height:40px;padding:0 14px;border-radius:11px;border:1px solid var(--bd2);background:rgba(15,23,42,.6);color:var(--tx);font-size:13px;font-weight:800;cursor:pointer}
+.lvb:hover{border-color:var(--teal)}
+.lvb.pri{background:rgba(45,212,191,.16);border-color:rgba(45,212,191,.55);color:#5EEAD4}
+.lvb.pri[aria-pressed="true"]{background:rgba(52,211,153,.2);border-color:var(--em);color:#6EE7B7}
+.lvb.wn{border-color:rgba(251,191,36,.5);color:#FCD34D}
+.lvb.need{border-color:var(--amb);color:#FCD34D;animation:lvn 1.2s infinite}
+@keyframes lvn{50%{background:rgba(251,191,36,.16)}}
+.lvb:disabled{opacity:.4;cursor:not-allowed}
+.rmbox{flex-basis:100%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding-top:12px;border-top:1px solid var(--bd)}
+.rmbox[hidden]{display:none}
+.rmbox label{display:block;font-size:12px;color:var(--mu);margin-bottom:4px}
+.rmbox input,.rmbox textarea{width:100%;background:var(--inset);border:1px solid var(--bd2);border-radius:9px;color:var(--tx);padding:9px 10px;font:13px var(--mono)}
+.rmbox textarea{min-height:86px;resize:vertical}
+.rmbox .full{grid-column:1/-1}
+.rmbox .row{grid-column:1/-1;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.rmbox .row span{font-size:12.5px;color:var(--amb)}
+@media (max-width:760px){.rmbox{grid-template-columns:1fr}}
+
+/* ---------- 성능 (가벼운 렌더링) ---------- */
+.glass{backdrop-filter:none;-webkit-backdrop-filter:none;background:rgba(10,18,36,.94)}
+.hdr{backdrop-filter:none;-webkit-backdrop-filter:none;background:rgba(3,7,18,.97)}
+.hero .glow{filter:none;opacity:.35}
+.modal,.dlg{backdrop-filter:none;-webkit-backdrop-filter:none}
+.real .simctl{display:none}
+.nodata{color:var(--mu)!important;text-shadow:none!important}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="hdr-in">
+    <div class="logo" aria-hidden="true">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="19" r="1.7" fill="currentColor"/><path d="M7.5 14.5a6.4 6.4 0 0 1 9 0"/><path d="M4.2 11a11 11 0 0 1 15.6 0"/></svg>
+    </div>
+    <div class="brand">
+      <div class="t"><h1>SafeWave AI Monitor</h1><span class="tag">60GHz mmWave</span></div>
+      <p>3단계 오탐지 방지 · Claude AI 응급 관제 시스템</p>
+    </div>
+    <div class="chip"><span class="live" aria-hidden="true"></span><span>노드</span><strong>대구 102동 거실 #1</strong></div>
+    <div class="chip clock" id="clock">----</div>
+    <div class="pill normal" id="pill" role="status" aria-live="polite"><i></i><span id="pillTx">정상 NORMAL</span></div>
+  </div>
+  <nav class="nav" aria-label="주요 메뉴">
+    <button type="button" data-go="live" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M12 12l6-6"/></svg>실시간 관제</button>
+    <button type="button" data-go="log"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></svg>이벤트 로그 <span class="cnt" id="navCnt">0</span></button>
+    <button type="button" data-go="profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>대상자 정보</button>
+    <button type="button" data-go="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>장치 설정</button>
+  </nav>
+</header>
+
+<main class="wrap">
+
+<!-- ================= 실시간 관제 ================= -->
+<div class="view" id="view-live">
+  <section class="glass livebar" aria-label="실시간 레이더 연결">
+    <div class="lvst"><span class="lvdot" id="lvDot" aria-hidden="true"></span><div style="min-width:0"><b id="lvTx" role="status" aria-live="polite">레이더 미연결 · 시뮬레이션 모드</b><small id="lvSub"></small></div></div>
+    <div class="lvbtns">
+      <button type="button" class="lvb pri" id="lvUsb" aria-pressed="false">USB 레이더 연결</button>
+      <button type="button" class="lvb" id="lvRm">원격 연결</button>
+      <button type="button" class="lvb wn" id="lvTest">낙상 테스트</button>
+      <button type="button" class="lvb" id="lvSnd">🔔 경보음 켜기</button>
+    </div>
+  </section>
+  <section class="glass hero normal" id="hero" aria-labelledby="heroTitle">
+    <div class="glow" aria-hidden="true"></div>
+    <div class="hero-top">
+      <div class="hero-main">
+        <div class="sbox" id="sbox" aria-hidden="true"></div>
+        <div>
+          <div><span class="sbadge" id="sbadge">● 정상 NORMAL</span><span class="gbadge">유예 타이머 <b id="gsec">12</b>초 남음</span></div>
+          <h2 id="heroTitle">대상자 실시간 호흡 및 움직임 정상 감지됨</h2>
+          <p id="heroDesc"></p>
+        </div>
+      </div>
+      <div class="simctl">
+        <span class="lb" id="simLbl">시뮬레이션 모드 제어</span>
+        <div class="btns" role="group" aria-label="시뮬레이션 모드 제어">
+          <button type="button" class="tb ok" id="bN"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12l5 5 9-10"/></svg>정상 모드</button>
+          <button type="button" class="tb wn" id="bG"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 3l10 18H2zM12 10v4M12 17.5v.5"/></svg><span>유예 (<span id="bGs">12</span>초)</span></button>
+          <button type="button" class="tb cr" id="bF"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg>긴급 확정</button>
+          <button type="button" class="tb in" id="bR"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 12h3l3-7 4 14 3-7h5"/></svg>미세움직임</button>
+        </div>
+      </div>
+    </div>
+    <div class="steps" aria-label="3단계 오탐지 방지 프로세스">
+      <div class="step" id="s1">
+        <div class="h"><span class="n"><span>1</span>mmWave 공간 변동 감지</span><span class="st" id="s1t">정상 감시 중</span></div>
+        <p id="s1d">Z축 높이 급감(Z &lt; 0.5m) 및 3D 공간 상 낙상 궤적 추적</p>
+      </div>
+      <div class="step" id="s2">
+        <div class="h"><span class="n"><span>2</span><span id="s2h">12초 허브 음성 &amp; 생체 검증</span></span><span class="st" id="s2t">대기 중</span></div>
+        <p>허브 스피커 음성 안내 출력 및 미세 호흡/움직임 가중치 판단</p>
+        <div class="bar"><i id="s2bar"></i></div>
+      </div>
+      <div class="step" id="s3">
+        <div class="h"><span class="n"><span>3</span>보호자 &amp; 119 긴급 연동</span><span class="st" id="s3t">대기 중</span></div>
+        <p id="s3d">무반응 시 스마트폰 앱 비상 푸시 및 119 좌표 전송</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="live-grid" style="margin-top:18px">
+    <!-- LEFT -->
+    <div class="col">
+      <section class="glass panel" aria-labelledby="hMap">
+        <div class="ph">
+          <div class="tt">
+            <div class="ico" style="background:rgba(45,212,191,.16);color:#2DD4BF;border:1px solid rgba(45,212,191,.4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2zM9 4v14M15 6v14"/></svg></div>
+            <div><h3 id="hMap">실시간 거실 공간 레이더 추적</h3><p id="mapSub">안전지대(침대/소파) 식별 및 대상자 실시간 3차원 위치 좌표</p></div>
+          </div>
+          <div class="tools">
+            <div class="seg" role="group" aria-label="보기 모드">
+              <button type="button" id="v2d" aria-pressed="true">2D</button>
+              <button type="button" id="v3d" aria-pressed="false">3D</button>
+            </div>
+            <button type="button" class="zbtn rst" id="zReset" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"/></svg>구역 초기화</button>
+            <button type="button" class="zbtn" id="zEdit" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4"/></svg><span id="zEditTx">예외 구역 편집</span></button>
+          </div>
+        </div>
+        <div class="map" id="mapBox">
+          <canvas id="map" tabindex="0" aria-label="레이더 맵"></canvas>
+          <div class="coord">
+            <div class="lb">실시간 좌표</div>
+            <div class="r"><span>X</span><span class="xy" id="cx">2.30m</span></div>
+            <div class="r"><span>Y</span><span class="xy" id="cy">2.10m</span></div>
+            <div class="r"><span>Z 높이</span><span class="z" id="cz">1.72m</span></div>
+          </div>
+          <div class="editbadge"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4"/></svg>드래그해서 구역 지정</div>
+          <div class="legend"><span><i style="background:#34D399;box-shadow:0 0 6px #34D399"></i>정상</span><span><i style="background:#FBBF24;box-shadow:0 0 6px #FBBF24"></i>유예</span><span><i style="background:#F43F5E;box-shadow:0 0 6px #F43F5E"></i>낙상</span></div>
+          <div class="hint" id="hint">탭하면 대상자 이동</div>
+        </div>
+        <div class="zlist" id="zlist" aria-label="등록된 안전지대"></div>
+      </section>
+
+      <section class="glass panel" aria-labelledby="hChart">
+        <div class="ph">
+          <div class="tt">
+            <div class="ico" style="background:rgba(129,140,248,.16);color:#818CF8;border:1px solid rgba(129,140,248,.4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 3v18h18M7 15l4-5 3 3 5-6"/></svg></div>
+            <div><h3 id="hChart">높이(Z축) 궤적 및 생체 호흡 신호</h3><p>mmWave 미세 위상 변이에 기반한 실시간 호흡 수치 모니터링</p></div>
+          </div>
+          <div class="vit">
+            <div><b id="vz" style="color:#5EEAD4;text-shadow:0 0 10px rgba(45,212,191,.6)">1.72</b><small>Z 높이 (m)</small></div>
+            <div><b id="vb" style="color:#A5B4FC;text-shadow:0 0 10px rgba(129,140,248,.6)">16</b><small>미세 호흡 (bpm)</small></div>
+          </div>
+        </div>
+        <div class="chart"><canvas id="chart" role="img" aria-label="Z 높이와 호흡수 그래프"></canvas></div>
+        <div class="ckey"><span><i style="background:#2DD4BF;box-shadow:0 0 6px #2DD4BF"></i>높이 Z축 (m)</span><span><i style="background:#818CF8;box-shadow:0 0 6px #818CF8"></i>호흡 파형 (bpm)</span><span><i style="background:#F43F5E"></i>낙상 임계 <span id="thKey">0.5</span>m</span></div>
+      </section>
+
+      <div class="duo">
+        <section class="glass panel" aria-labelledby="hRule">
+          <div class="ph" style="margin-bottom:12px">
+            <div class="tt">
+              <div class="ico" style="background:rgba(167,139,250,.16);color:#C4B5FD;border:1px solid rgba(167,139,250,.45)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.4 8.2-8 9-4.6-.8-8-4.5-8-9V6z"/><path d="M12 9.5c-1-1.6-3.5-1-3.5.9 0 1.6 3.5 3.6 3.5 3.6s3.5-2 3.5-3.6c0-1.9-2.5-2.5-3.5-.9z"/></svg></div>
+              <div><h3 id="hRule">AI 주거 안전 3대 수칙</h3><p>항시 가이드</p></div>
+            </div>
+            <button type="button" class="refresh" id="rRefresh"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg>AI 맞춤 갱신</button>
+          </div>
+          <div class="rules" id="rules">
+            <div style="min-width:0">
+              <div class="tg" id="rTag"></div>
+              <ol id="rList"></ol>
+            </div>
+            <div class="art" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0M9.5 5.5h5M12 3.5v4"/></svg></div>
+          </div>
+        </section>
+
+        <section class="glass panel" aria-labelledby="hNt">
+          <div class="ph" style="margin-bottom:12px">
+            <div class="tt">
+              <div class="ico" style="background:rgba(45,212,191,.16);color:#2DD4BF;border:1px solid rgba(45,212,191,.4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1zM15 8a5 5 0 0 1 0 8M18 5a9 9 0 0 1 0 14"/></svg></div>
+              <div><h3 id="hNt">시스템 공지사항</h3><p>New Updates</p></div>
+            </div>
+          </div>
+          <div class="notices" id="notices"></div>
+        </section>
+      </div>
+
+      <section class="glass panel" aria-labelledby="hRec">
+        <div class="ph" style="margin-bottom:10px">
+          <div class="tt">
+            <div class="ico" style="background:rgba(148,163,184,.14);color:#CBD5E1;border:1px solid var(--bd2)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11M3.5 6l1 1 2-2M3.5 12l1 1 2-2M3.5 18l1 1 2-2"/></svg></div>
+            <div><h3 id="hRec">실시간 이벤트 시스템 로그</h3><p>Sensors: Active</p></div>
+          </div>
+          <button type="button" class="link" data-go="log">전체 보기 →</button>
+        </div>
+        <ol class="log recent" id="recent"></ol>
+      </section>
+    </div>
+
+    <!-- RIGHT SIDEBAR -->
+    <aside class="side" aria-label="대상자 및 AI">
+      <section class="glass panel" aria-labelledby="hSubj">
+        <div class="ph" style="margin-bottom:10px">
+          <div class="tt">
+            <div class="ico" style="background:rgba(45,212,191,.16);color:#2DD4BF;border:1px solid rgba(45,212,191,.4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></div>
+            <div><h3 id="hSubj">대상자 인적사항</h3><p>모니터링 대상 어르신</p></div>
+          </div>
+          <span class="sample">예시 데이터</span>
+        </div>
+        <div class="subj-top">
+          <div class="avatar" id="avatar">김</div>
+          <div>
+            <div class="subj-name" id="pName">김영순</div>
+            <div class="subj-meta" id="pMeta">78세 · 여 · 혈액형 A+</div>
+            <span class="presence normal" id="presence">● 재실 · 정상</span>
+          </div>
+        </div>
+        <dl class="dl">
+          <dt>주소</dt><dd id="pAddr"></dd>
+          <dt>기저질환</dt><dd id="pCond" class="warn"></dd>
+          <dt>복용약</dt><dd id="pMeds"></dd>
+          <dt>보행</dt><dd id="pMob"></dd>
+          <dt>특이사항</dt><dd id="pNote"></dd>
+        </dl>
+        <button type="button" class="more" data-go="profile">상세 정보 · 수정 →</button>
+      </section>
+
+      <section class="glass panel" aria-labelledby="hCt">
+        <div class="ph" style="margin-bottom:10px">
+          <div class="tt">
+            <div class="ico" style="background:rgba(244,63,94,.16);color:#FB7185;border:1px solid rgba(251,113,133,.45)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8.1 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.8 2z"/></svg></div>
+            <div><h3 id="hCt">비상연락처</h3><p>긴급 확정 시 우선순위대로 알림</p></div>
+          </div>
+        </div>
+        <div class="contacts" id="contacts"></div>
+        <div class="e119" id="e119"><b><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 16V8h11v8M13 11h4l3 3v2h-7M7.5 10v4M5.5 12h4"/><circle cx="6" cy="18.5" r="1.5"/><circle cx="17" cy="18.5" r="1.5"/></svg>119 자동 연동</b><span id="e119s">대기</span></div>
+      </section>
+
+      <section class="glass panel" aria-labelledby="hAi" style="border-color:rgba(244,162,126,.4)">
+        <div class="ph">
+          <div class="tt">
+            <div class="ico" style="background:rgba(244,162,126,.16);color:#F4A27E;border:1px solid rgba(244,162,126,.45)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4V2M15 16v-2M8 9h2M20 9h2M17.8 11.8l1.4 1.4M17.8 6.2l1.4-1.4M3 21l9-9M12.2 6.2l-1.4-1.4"/></svg></div>
+            <div><h3 id="hAi">Claude AI 인텔리전스</h3><p>실시간 센서 데이터 통합 추론 및 응급 분석</p></div>
+          </div>
+          <span class="badge" id="aiBadge">연결 확인 중</span>
+        </div>
+        <div class="aib">
+          <button type="button" class="ab" id="aB"><b style="color:#FECDD3"><svg viewBox="0 0 24 24" fill="none" stroke="#FB7185" stroke-width="2" stroke-linecap="round"><path d="M6 3h9l4 4v14H6zM12 10v6M9 13h6"/></svg>119 긴급 브리핑</b><span>구급대 전달용 요약</span></button>
+          <button type="button" class="ab" id="aJ"><b style="color:#99F6E4"><svg viewBox="0 0 24 24" fill="none" stroke="#2DD4BF" stroke-width="2" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>낙상 위험 리포트</b><span>JSON 종합 진단</span></button>
+          <button type="button" class="ab" id="aV"><b style="color:#FDE68A"><svg viewBox="0 0 24 24" fill="none" stroke="#FBBF24" stroke-width="2" stroke-linecap="round"><path d="M4 10v4h4l5 4V6L8 10zM16.5 8.5a5 5 0 0 1 0 7"/></svg>AI 음성 멘트</b><span>상황 맞춤 스피커 안내</span></button>
+        </div>
+        <div class="tts">
+          <div class="top"><span>허브 송출 음성 (TTS)<span class="eq" id="eq"><i></i><i></i><i></i></span></span><button type="button" id="bPlay">▶ 재생</button></div>
+          <p id="tts">"어르신, 괜찮으십니까? SafeWave 모니터링 시스템입니다. 몸을 움직이실 수 있다면 반응해 주세요."</p>
+        </div>
+        <div class="qa">
+          <div class="top"><b><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12z"/></svg>AI 심층 질의응답 (Q&amp;A)</b><span>Real-time Context Aware</span></div>
+          <form class="qform" id="qform">
+            <label for="qIn" class="sr" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">AI에게 질문</label>
+            <input id="qIn" type="text" placeholder="예: 화장실 설치 위치나 야간 오탐지 줄이는 법 알려줘" autocomplete="off">
+            <button type="submit" id="qBtn">질문</button>
+          </form>
+          <div class="qchips">
+            <button type="button" data-q="화장실에도 mmWave 센서를 설치해도 습기나 물방울에 오작동 안 하나요?">💡 화장실 설치 문의</button>
+            <button type="button" data-q="반려동물이 지나갈 때 낙상 오탐지를 방지하는 원리가 무엇인가요?">💡 반려동물 오탐지 방지</button>
+            <button type="button" data-q="새벽 시간대 고령자 낙상 위험을 줄이기 위한 안전 수칙 추천해줘">💡 야간 안전 수칙</button>
+          </div>
+        </div>
+        <div class="out" id="out" aria-live="polite"><div class="empty">상단 AI 버튼을 누르거나 질문을 입력하면 Claude의 분석 답변이 이곳에 출력됩니다.</div></div>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<!-- ================= 이벤트 로그 ================= -->
+<div class="view" id="view-log" hidden>
+  <section class="glass panel">
+    <div class="vtitle" style="margin-bottom:16px">
+      <div><h2>이벤트 로그</h2><p>대구 102동 거실 #1 · 이번 세션에서 발생한 모든 이벤트</p></div>
+      <button type="button" class="ghost" id="clearLog">로그 지우기</button>
+    </div>
+    <div class="lstats">
+      <div class="lstat"><b id="stAll" style="color:#fff">0</b><span>전체 이벤트</span></div>
+      <div class="lstat"><b id="stWn" style="color:#FCD34D">0</b><span>유예 진입</span></div>
+      <div class="lstat"><b id="stCr" style="color:#FDA4AF">0</b><span>긴급 확정</span></div>
+      <div class="lstat"><b id="stOk" style="color:#6EE7B7">0</b><span>오탐지 해제</span></div>
+    </div>
+    <div class="lhead">
+      <div class="chips" role="group" aria-label="로그 필터" id="chips">
+        <button type="button" data-f="all" aria-pressed="true">전체</button>
+        <button type="button" data-f="ok" aria-pressed="false">정상</button>
+        <button type="button" data-f="wn" aria-pressed="false">경고</button>
+        <button type="button" data-f="cr" aria-pressed="false">긴급</button>
+        <button type="button" data-f="ai" aria-pressed="false">AI</button>
+        <button type="button" data-f="sys" aria-pressed="false">시스템</button>
+      </div>
+    </div>
+    <div class="tscroll">
+      <table class="ltable">
+        <thead><tr><th scope="col">시각</th><th scope="col">유형</th><th scope="col">내용</th></tr></thead>
+        <tbody id="ltbody"></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<!-- ================= 대상자 정보 ================= -->
+<div class="view" id="view-profile" hidden>
+  <div class="vtitle" style="margin-bottom:16px">
+    <div><h2>대상자 정보</h2><p>119 브리핑과 비상연락에 쓰이는 정보입니다. 이 브라우저에만 저장됩니다.</p></div>
+  </div>
+  <div class="fgrid">
+    <section class="glass panel" aria-labelledby="hPf">
+      <div class="ph"><div class="tt"><div class="ico" style="background:rgba(45,212,191,.16);color:#2DD4BF;border:1px solid rgba(45,212,191,.4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></div><div><h3 id="hPf">인적사항</h3><p>모니터링 대상 어르신</p></div></div></div>
+      <div class="fields">
+        <div class="f"><label for="fName">이름</label><input id="fName" autocomplete="off"></div>
+        <div class="f"><label for="fAge">나이</label><input id="fAge" type="number" min="0" max="120" inputmode="numeric"></div>
+        <div class="f"><label for="fSex">성별</label><select id="fSex"><option>여</option><option>남</option></select></div>
+        <div class="f"><label for="fBlood">혈액형</label><select id="fBlood"><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>O+</option><option>O-</option><option>AB+</option><option>AB-</option><option>미상</option></select></div>
+        <div class="f full"><label for="fAddr">주소</label><input id="fAddr" autocomplete="off"></div>
+        <div class="f full"><label for="fCond">기저질환</label><input id="fCond" autocomplete="off"><span class="help">119 브리핑에 그대로 포함됩니다.</span></div>
+        <div class="f full"><label for="fMeds">복용약</label><input id="fMeds" autocomplete="off"></div>
+        <div class="f full"><label for="fMob">보행 상태</label><input id="fMob" autocomplete="off"></div>
+        <div class="f full"><label for="fNote">특이사항</label><textarea id="fNote"></textarea></div>
+      </div>
+    </section>
+    <section class="glass panel" aria-labelledby="hCe">
+      <div class="ph"><div class="tt"><div class="ico" style="background:rgba(244,63,94,.16);color:#FB7185;border:1px solid rgba(251,113,133,.45)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8.1 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.8 2z"/></svg></div><div><h3 id="hCe">비상연락처</h3><p>위에서부터 1순위 · 최대 4명</p></div></div>
+        <button type="button" class="ghost" id="addCt" style="border-color:rgba(45,212,191,.5);color:#5EEAD4">+ 연락처 추가</button></div>
+      <div id="cEdit"></div>
+    </section>
+  </div>
+  <div class="actions"><span class="saved" id="pfSaved">✓ 저장되었습니다</span><button type="button" class="ghost" id="pfReset">예시 데이터로 되돌리기</button><button type="button" class="primary" id="pfSave">저장</button></div>
+</div>
+
+<!-- ================= 장치 설정 ================= -->
+<div class="view" id="view-settings" hidden>
+  <div class="vtitle" style="margin-bottom:16px">
+    <div><h2>장치 설정</h2><p>레이더 감지 파라미터와 알림 연동을 조정합니다. 저장하면 관제 화면에 바로 반영됩니다.</p></div>
+  </div>
+  <div class="fgrid">
+    <section class="glass panel" aria-labelledby="hDet">
+      <div class="ph"><div class="tt"><div class="ico" style="background:rgba(45,212,191,.16);color:#2DD4BF;border:1px solid rgba(45,212,191,.4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><path d="M12 12l6-6"/></svg></div><div><h3 id="hDet">감지 설정</h3><p>레이더 설치 및 낙상 판정 기준</p></div></div></div>
+      <div class="fields">
+        <div class="f full"><label for="sInst">레이더 설치 높이</label><div class="range"><input type="range" id="sInst" min="2.2" max="3.0" step="0.1"><output id="oInst" for="sInst"></output></div><span class="help">천장 또는 벽 상단, 감지면이 아래를 향하도록 설치</span></div>
+        <div class="f full"><label for="sTh">낙상 판정 높이 (Z 임계값)</label><div class="range"><input type="range" id="sTh" min="0.3" max="0.8" step="0.05"><output id="oTh" for="sTh"></output></div><span class="help">대상자 높이가 이 값 아래로 떨어지면 1단계 이상 징후로 판정</span></div>
+        <div class="f full"><label for="sGr">유예 시간</label><div class="range"><input type="range" id="sGr" min="10" max="15" step="1"><output id="oGr" for="sGr"></output></div><span class="help">음성 안내 후 반응을 기다리는 시간</span></div>
+        <div class="f full"><label for="sSens">감지 민감도</label><select id="sSens"><option>낮음</option><option>보통</option><option>높음</option></select></div>
+      </div>
+    </section>
+    <section class="glass panel" aria-labelledby="hNoti">
+      <div class="ph"><div class="tt"><div class="ico" style="background:rgba(244,63,94,.16);color:#FB7185;border:1px solid rgba(251,113,133,.45)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg></div><div><h3 id="hNoti">알림 및 음성</h3><p>긴급 확정 시 연동 채널</p></div></div></div>
+      <div class="trow"><div><b id="lVoice">허브 음성 안내</b><span>유예 진입 시 스피커로 안내 멘트 송출</span></div><button type="button" class="sw" role="switch" data-k="voice" aria-labelledby="lVoice"></button></div>
+      <div class="trow"><div><b id="lTg">텔레그램 봇 푸시</b><span>앱이 꺼져 있어도 보호자에게 도달</span></div><button type="button" class="sw" role="switch" data-k="tg" aria-labelledby="lTg"></button></div>
+      <div class="trow"><div><b id="lPush">보호자 앱 푸시</b><span>대시보드 앱 진동 및 경고음</span></div><button type="button" class="sw" role="switch" data-k="push" aria-labelledby="lPush"></button></div>
+      <div class="trow"><div><b id="lSms">SMS 문자</b><span>데이터가 없는 보호자용 보조 채널</span></div><button type="button" class="sw" role="switch" data-k="sms" aria-labelledby="lSms"></button></div>
+      <div class="trow"><div><b id="l119">119 자동 연동</b><span>끄면 보호자 확인 후 수동 신고</span></div><button type="button" class="sw" role="switch" data-k="auto119" aria-labelledby="l119"></button></div>
+    </section>
+  </div>
+  <section class="glass panel" style="margin-top:18px" aria-labelledby="hSys">
+    <div class="ph"><div class="tt"><div class="ico" style="background:rgba(56,189,248,.14);color:#38BDF8;border:1px solid rgba(56,189,248,.4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9zM9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/></svg></div><div><h3 id="hSys">장치 정보</h3><p>현재 연결된 노드</p></div></div></div>
+    <dl class="sysinfo">
+      <dt>노드</dt><dd>대구 102동 거실 #1</dd>
+      <dt>센서</dt><dd>60GHz mmWave 레이더</dd>
+      <dt>감지 구역</dt><dd>5.0m × 5.0m · 안전지대 2개 (소파, 침대)</dd>
+      <dt>통신</dt><dd id="sysComm">Wi-Fi · 시뮬레이션 모드</dd>
+      <dt>AI 엔진</dt><dd id="sysAi">Claude</dd>
+    </dl>
+  </section>
+  <div class="actions"><span class="saved" id="stSaved">✓ 저장되었습니다</span><button type="button" class="ghost" id="stReset">기본값</button><button type="button" class="primary" id="stSave">저장</button></div>
+</div>
+
+</main>
+
+<footer class="foot"><span>SafeWave mmWave Radar Intelligent Care Solution © 2026</span><span>대구 102동 60GHz 노드 #1 · <span id="footAi">Claude AI</span></span></footer>
+
+<div class="modal" id="modal" role="alertdialog" aria-modal="true" aria-labelledby="mT">
+  <div class="mbox">
+    <div class="mhead">
+      <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 3l10 18H2zM12 10v4M12 17.5v.5"/></svg></div>
+      <div><h2 id="mT">긴급 낙상 확정</h2><div class="sub" id="mSub">유예 반응 미감지 · 최종 낙상 확정</div></div>
+    </div>
+    <div class="meta"><span id="mWho">대상자</span><span id="mTime">--:--:--</span></div>
+    <div class="meta" style="margin-top:0"><span id="mPos">X 2.30m · Y 2.10m · Z 0.20m</span><span id="mCh"></span></div>
+    <div class="sum" id="mSum">상황 브리핑을 준비하는 중입니다...</div>
+    <button type="button" id="mAck">확인 및 알람 해제</button>
+  </div>
+</div>
+
+<div class="dlg" id="ntDlg" role="dialog" aria-modal="true" aria-labelledby="ntTitle">
+  <div class="box">
+    <button type="button" class="x" id="ntX" aria-label="닫기">×</button>
+    <div class="meta"><span class="nb" id="ntBadge"></span><span id="ntDate"></span></div>
+    <h3 id="ntTitle"></h3>
+    <div class="body" id="ntBody"></div>
+    <div class="row"><button type="button" class="ghost" id="ntClose">닫기</button></div>
+  </div>
+</div>
+
+<div class="dlg" id="zDlg" role="dialog" aria-modal="true" aria-labelledby="zTitle">
+  <div class="box">
+    <h3 id="zTitle">신규 예외 구역 이름</h3>
+    <div class="meta" style="margin-top:6px">크기 <span id="zSize" style="color:#5EEAD4"></span></div>
+    <div class="f" style="margin-top:12px"><label for="zName">구역 명칭</label><input id="zName" placeholder="예: 식탁 주변, 안마의자, 주방 입구" autocomplete="off"></div>
+    <div class="row"><button type="button" class="ghost" id="zCancel">취소</button><button type="button" class="primary" id="zSave">저장</button></div>
+  </div>
+</div>
+<script>
+(function(){
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const ROOM = 5, STAND_Z = 1.72, FALL_Z = 0.2;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const pad = n => String(n).padStart(2,'0');
+  const now = () => { const d = new Date(); return pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds()); };
+  const today = () => { const d = new Date(); return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); };
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+  /* ---------- 저장소 (이 브라우저 전용) ---------- */
+  const store = {
+    get(k){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; }catch(e){ return null; } },
+    set(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); return true; }catch(e){ return false; } }
+  };
+  const DEF_PROFILE = {
+    name:'김영순', age:78, sex:'여', blood:'A+', addr:'대구 ○○구 ○○로 102동 1203호',
+    cond:'고혈압, 골다공증', meds:'혈압약 (아침 1회)', mob:'실내 보행 보조기 사용', note:'야간 화장실 이동이 잦음',
+    contacts:[
+      { name:'김민수', rel:'아들', phone:'010-0000-1111' },
+      { name:'이정희', rel:'딸', phone:'010-0000-2222' },
+      { name:'○○노인복지관', rel:'담당 사회복지사', phone:'053-000-0000' }
+    ]
+  };
+  const DEF_SET = { inst:2.6, th:0.5, grace:12, sens:'보통', voice:true, tg:true, push:true, sms:false, auto119:true };
+  let P = Object.assign({}, DEF_PROFILE, store.get('sw-profile') || {});
+  if (!Array.isArray(P.contacts)) P.contacts = DEF_PROFILE.contacts.slice();
+  let C = Object.assign({}, DEF_SET, store.get('sw-settings') || {});
+
+  const DEF_ZONES = [
+    { name:'침대', x:3.35, y:0.25, w:1.4, h:2.1, hgt:0.5 },
+    { name:'소파', x:0.25, y:3.75, w:2.2, h:0.95, hgt:0.45 }
+  ];
+  let customZones = (store.get('sw-zones') || []).filter(z => z && isFinite(z.x) && isFinite(z.w));
+  const allZones = () => DEF_ZONES.concat(customZones);
+  const zoneAt = (x, y) => allZones().find(z => x >= z.x && x <= z.x + z.w && y >= z.y && y <= z.y + z.h);
+  const S = { mode:'normal', x:2.3, y:2.1, z:STAND_Z, tx:2.3, ty:2.1, wait:1, graceLeft:0, bpm:16, view:'2d', yaw:0.6, trail:[], tab:'live', rest:null };
+  const LIVE = { src:null, info:null, present:undefined };   // 실시간 레이더 연결 상태
+  const REAL = !/[?&#]demo\b/.test(location.search + location.hash);   // 기본: 실측값만 (시뮬레이션 끔)
+  const DPR = () => Math.min(devicePixelRatio || 1, 1.25);              // 캔버스 해상도 제한 (렉 감소)
+  if (REAL){ document.documentElement.classList.add('real'); S.x = S.tx = ROOM/2; S.y = S.ty = ROOM/2; }
+  const seen = () => !REAL || (LIVE.src && (LIVE.present || S.mode !== 'normal'));   // 대상자 점을 그릴지
+  const hist = { z:[], b:[] };
+  for (let i=0;i<120;i++){ hist.z.push(STAND_Z); hist.b.push(16); }
+  const stars = Array.from({length:90}, () => [Math.random(), Math.random(), Math.random()*0.9+0.3, Math.random()]);
+
+  const ICON = {
+    normal:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.4 8.2-8 9-4.6-.8-8-4.5-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>',
+    grace:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3l10 18H2zM12 10v4M12 17.5v.5"/></svg>',
+    emergency:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 16V8h11v8M13 11h4l3 3v2h-7M6 18.5a1.5 1.5 0 1 0 0-.01M17 18.5a1.5 1.5 0 1 0 0-.01M7.5 10v4M5.5 12h4"/></svg>'
+  };
+  const channels = () => [C.tg && '텔레그램', C.push && '앱 푸시', C.sms && 'SMS'].filter(Boolean);
+  const heroText = m => ({
+    normal: REAL
+      ? (LIVE.src ? ['● 정상 NORMAL', LIVE.present ? '재실 감지 · 낙상 신호 없음' : '감지 구역에 사람 없음', `60GHz 레이더(MR60FDA2)가 실시간으로 재실·낙상 신호를 감시하고 있습니다. 표시되는 값은 모두 실제 측정값입니다.`]
+                  : ['○ 레이더 미연결', '레이더 연결 대기 중', '위쪽 [USB 레이더 연결] 또는 [원격 연결]을 누르면 실제 측정값이 표시됩니다. 연결 전에는 아무 값도 표시하지 않습니다.'])
+      : ['● 정상 NORMAL','대상자 실시간 호흡 및 움직임 정상 감지됨',`mmWave 레이더가 ${P.name} 님의 위치·높이·미세 호흡을 추적하고 있습니다. 안전지대(침대/소파) 밖에서 특이사항이 없습니다.`],
+    grace: REAL ? ['▲ 낙상 의심 유예 GRACE',`레이더 낙상 신호 · ${C.grace}초 기립 확인 중`,`레이더가 낙상을 감지했습니다. ${C.grace}초 안에 일어나면 오탐지로 자동 해제되고, 그대로면 긴급으로 확정됩니다.`] : ['▲ 낙상 의심 유예 GRACE',`Z축 높이 급감 포착 · ${C.grace}초 음성 확인 진행 중`,`바닥 수준 높이(Z < ${C.th}m)가 감지되었습니다. ${C.voice ? '허브 스피커로 안내를 송출하고 ' : ''}미세 움직임·호흡 반응을 ${C.grace}초간 확인합니다.`],
+    emergency:['■ 긴급 낙상 확정 EMERGENCY',`${C.grace}초간 무반응 · 보호자${C.auto119 ? ' 및 119' : ''} 긴급 연동 발령`,`${P.name} 님의 응답이 확인되지 않아 최종 낙상으로 확정했습니다. ${channels().join('·') || '알림 채널 없음'}으로 보호자에게 알렸습니다${C.auto119 ? ' · 119 위치 전송 완료' : ' · 119는 보호자 판단 대기'}.${LIVE.src || REAL ? '' : ' (시뮬레이션)'}`]
+  })[m];
+
+  /* ---------- 로그 ---------- */
+  const LOGS = [];
+  const TYPE = { ok:'정상', wn:'경고', cr:'긴급', ai:'AI', sys:'시스템' };
+  let logFilter = 'all';
+  function log(msg, cls){
+    const e = { t: now(), d: today(), msg, cls: cls || 'sys' };
+    LOGS.unshift(e); if (LOGS.length > 300) LOGS.pop();
+    const li = document.createElement('li'); li.className = e.cls === 'sys' ? '' : e.cls;
+    const m = document.createElement('span'); m.textContent = msg;
+    const t = document.createElement('span'); t.className = 't'; t.textContent = e.t;
+    li.append(m, t); $('recent').prepend(li);
+    while ($('recent').children.length > 6) $('recent').lastChild.remove();
+    renderLog();
+  }
+  function renderLog(){
+    const rows = LOGS.filter(e => logFilter === 'all' || e.cls === logFilter);
+    $('ltbody').innerHTML = rows.length ? rows.map(e => `<tr><td class="t">${e.d.slice(5)} ${e.t}</td><td><span class="ty ${e.cls}">${TYPE[e.cls]}</span></td><td>${esc(e.msg)}</td></tr>`).join('')
+      : '<tr><td colspan="3" class="empty-row">표시할 이벤트가 없습니다.</td></tr>';
+    $('stAll').textContent = LOGS.length;
+    $('stWn').textContent = LOGS.filter(e => e.msg.includes('유예 진입')).length;
+    $('stCr').textContent = LOGS.filter(e => e.msg.includes('최종 낙상 확정') || e.msg.includes('즉시 긴급 확정')).length;
+    $('stOk').textContent = LOGS.filter(e => e.msg.includes('오탐지') || e.msg.includes('반응 확인')).length;
+    const cr = LOGS.filter(e => e.cls === 'cr').length;
+    $('navCnt').textContent = LOGS.length;
+    $('navCnt').className = 'cnt' + (S.mode === 'emergency' && cr ? ' hot' : '');
+  }
+  $('chips').addEventListener('click', e => {
+    const b = e.target.closest('button[data-f]'); if (!b) return;
+    logFilter = b.dataset.f;
+    $('chips').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    renderLog();
+  });
+  $('clearLog').onclick = () => { LOGS.length = 0; $('recent').innerHTML = ''; renderLog(); };
+
+  /* ---------- 탭 ---------- */
+  function go(tab){
+    S.tab = tab;
+    ['live','log','profile','settings'].forEach(v => { $('view-'+v).hidden = v !== tab; });
+    document.querySelectorAll('.nav button[data-go]').forEach(b => { if (b.dataset.go === tab) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); });
+    if (tab === 'profile') fillProfileForm();
+    if (tab === 'settings') fillSettingsForm();
+    if (tab === 'live') requestAnimationFrame(fitAll);
+    window.scrollTo({ top:0, behavior: reduce ? 'auto' : 'smooth' });
+  }
+  document.addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (b) go(b.dataset.go); });
+
+  /* ---------- 대상자 / 연락처 ---------- */
+  function renderProfile(){
+    $('avatar').textContent = (P.name || '?').trim().charAt(0) || '?';
+    $('pName').innerHTML = esc(P.name || '이름 없음');
+    $('pMeta').textContent = `${P.age || '-'}세 · ${P.sex || '-'} · 혈액형 ${P.blood || '-'}`;
+    $('pAddr').textContent = P.addr || '-'; $('pCond').textContent = P.cond || '없음'; $('pMeds').textContent = P.meds || '-';
+    $('pMob').textContent = P.mob || '-'; $('pNote').textContent = P.note || '-';
+    $('mWho').textContent = `${P.name} (${P.age}세 · ${P.sex})`;
+    const ph = (P.contacts || []).filter(c => c && (c.name || c.phone));
+    $('contacts').innerHTML = ph.length ? ph.map((c,i) => `
+      <div class="ct">
+        <div class="ci">${i+1}순위</div>
+        <div style="min-width:0"><div class="cn">${esc(c.name)} <span class="sent">알림 발송</span></div><div class="cr">${esc(c.rel)}</div><div class="cp">${esc(c.phone)}</div></div>
+        ${c.phone ? `<a href="tel:${esc(String(c.phone).replace(/[^0-9+]/g,''))}" aria-label="${esc(c.name)}에게 전화"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8.1 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.8 2z"/></svg></a>` : '<span></span>'}
+      </div>`).join('') : '<div class="out" style="min-height:auto;margin:0"><div class="empty" style="padding:16px">등록된 연락처가 없습니다. 대상자 정보에서 추가하세요.</div></div>';
+  }
+  function fillProfileForm(){
+    $('fName').value = P.name || ''; $('fAge').value = P.age || ''; $('fSex').value = P.sex || '여'; $('fBlood').value = P.blood || '미상';
+    $('fAddr').value = P.addr || ''; $('fCond').value = P.cond || ''; $('fMeds').value = P.meds || ''; $('fMob').value = P.mob || ''; $('fNote').value = P.note || '';
+    renderContactEditor(P.contacts.slice());
+  }
+  let draftContacts = [];
+  function renderContactEditor(list){
+    draftContacts = list;
+    $('cEdit').innerHTML = list.map((c,i) => `
+      <div class="cedit" data-i="${i}">
+        <div class="f"><label for="cn${i}">${i+1}순위 이름</label><input id="cn${i}" data-k="name" value="${esc(c.name)}"></div>
+        <div class="f"><label for="cr${i}">관계</label><input id="cr${i}" data-k="rel" value="${esc(c.rel)}"></div>
+        <div class="f"><label for="cp${i}">전화번호</label><input id="cp${i}" data-k="phone" type="tel" inputmode="tel" value="${esc(c.phone)}"></div>
+        <button type="button" class="del" aria-label="${i+1}순위 연락처 삭제">×</button>
+      </div>`).join('') || '<p style="color:var(--mu);font-size:13px;margin:0">연락처가 없습니다. 추가 버튼을 눌러 주세요.</p>';
+    $('addCt').disabled = list.length >= 4;
+  }
+  function readContactEditor(){
+    return [...$('cEdit').querySelectorAll('.cedit')].map(row => {
+      const o = {}; row.querySelectorAll('input').forEach(inp => o[inp.dataset.k] = inp.value.trim()); return o;
+    });
+  }
+  $('cEdit').addEventListener('click', e => {
+    if (!e.target.classList.contains('del')) return;
+    const list = readContactEditor(); list.splice(+e.target.closest('.cedit').dataset.i, 1); renderContactEditor(list);
+  });
+  $('addCt').onclick = () => { const list = readContactEditor(); if (list.length < 4){ list.push({ name:'', rel:'', phone:'' }); renderContactEditor(list); } };
+  const flash = id => { $(id).classList.add('on'); setTimeout(() => $(id).classList.remove('on'), 1800); };
+  $('pfSave').onclick = () => {
+    P = { name:$('fName').value.trim() || '이름 없음', age:+$('fAge').value || '', sex:$('fSex').value, blood:$('fBlood').value,
+      addr:$('fAddr').value.trim(), cond:$('fCond').value.trim(), meds:$('fMeds').value.trim(), mob:$('fMob').value.trim(), note:$('fNote').value.trim(),
+      contacts: readContactEditor().filter(c => c.name || c.phone) };
+    store.set('sw-profile', P); renderProfile(); render(); flash('pfSaved'); log('대상자 정보 저장', 'sys');
+  };
+  $('pfReset').onclick = () => { P = JSON.parse(JSON.stringify(DEF_PROFILE)); store.set('sw-profile', P); fillProfileForm(); renderProfile(); render(); flash('pfSaved'); };
+
+  /* ---------- 장치 설정 ---------- */
+  function syncOutputs(){
+    $('oInst').textContent = (+$('sInst').value).toFixed(1) + ' m';
+    $('oTh').textContent = (+$('sTh').value).toFixed(2) + ' m';
+    $('oGr').textContent = $('sGr').value + ' 초';
+  }
+  ['sInst','sTh','sGr'].forEach(id => $(id).addEventListener('input', syncOutputs));
+  let draftSet = {};
+  function fillSettingsForm(){
+    draftSet = Object.assign({}, C);
+    $('sInst').value = C.inst; $('sTh').value = C.th; $('sGr').value = C.grace; $('sSens').value = C.sens; syncOutputs();
+    document.querySelectorAll('.sw[data-k]').forEach(b => b.setAttribute('aria-checked', String(!!draftSet[b.dataset.k])));
+  }
+  document.querySelectorAll('.sw[data-k]').forEach(b => b.addEventListener('click', () => { draftSet[b.dataset.k] = !draftSet[b.dataset.k]; b.setAttribute('aria-checked', String(draftSet[b.dataset.k])); }));
+  $('stSave').onclick = () => {
+    C = Object.assign({}, draftSet, { inst:+$('sInst').value, th:+$('sTh').value, grace:+$('sGr').value, sens:$('sSens').value });
+    store.set('sw-settings', C); applySettings(); flash('stSaved');
+    log(`장치 설정 저장 · 임계 ${C.th}m · 유예 ${C.grace}초 · 민감도 ${C.sens}`, 'sys');
+  };
+  $('stReset').onclick = () => { C = Object.assign({}, DEF_SET); store.set('sw-settings', C); fillSettingsForm(); applySettings(); flash('stSaved'); };
+  function applySettings(){
+    $('s1d').textContent = `Z축 높이 급감(Z < ${C.th}m) 및 3D 공간 상 낙상 궤적 추적`;
+    $('s2h').textContent = `${C.grace}초 허브 음성 & 생체 검증`;
+    $('s3d').textContent = C.auto119 ? '무반응 시 스마트폰 앱 비상 푸시 및 119 좌표 전송' : '무반응 시 스마트폰 앱 비상 푸시 (119는 수동 신고)';
+    $('thKey').textContent = C.th;
+    $('mSub').textContent = `${C.grace}초간 유예 반응 미감지 · 최종 낙상 확정`;
+    $('bGs').textContent = C.grace;
+    render();
+  }
+
+  /* ---------- 상태 ---------- */
+  function render(){
+    const m = S.mode;
+    const h = (m === 'normal' && S.rest) ? ['● 정상 NORMAL', `${S.rest}에서 휴식 중`, '예외 구역 안에서 누운 자세가 감지되었습니다. 일상적인 휴식으로 보고 낙상 판정에서 제외했습니다. (1단계 필터)'] : heroText(m);
+    $('hero').className = 'glass hero ' + m;
+    $('sbox').innerHTML = ICON[m];
+    $('sbadge').textContent = h[0]; $('heroTitle').textContent = h[1]; $('heroDesc').textContent = h[2];
+    $('pill').className = 'pill ' + m;
+    $('pillTx').textContent = m === 'normal' ? '정상 NORMAL' : m === 'grace' ? '유예 GRACE' : '긴급 EMERGENCY';
+    const set = (id, cls, txt) => { $(id).className = 'step' + (cls ? ' '+cls : ''); $(id+'t').textContent = txt; };
+    if (m === 'normal'){ set('s1', S.rest ? 'done' : '', S.rest ? '✓ 안전지대 제외' : '정상 감시 중'); set('s2','','대기 중'); set('s3','','대기 중'); }
+    if (m === 'grace'){ set('s1','done', REAL ? '✓ 낙상 신호 포착' : '✓ Z축 낙상 포착'); set('s2','active','검증 중'); set('s3','','대기 중'); }
+    if (m === 'emergency'){ set('s1','done','✓ 포착'); set('s2','done','✓ 무반응 확인'); set('s3','alert','발령 완료'); }
+    $('bR').disabled = m === 'normal' && !S.rest;
+    $('bG').disabled = m !== 'normal';
+    if (ruleMode !== m){ ruleMode = m; setRules(defaultRules(m), false); }
+    $('avatar').className = 'avatar ' + m;
+    $('presence').className = 'presence ' + m;
+    $('presence').textContent = m === 'normal' ? (REAL && !LIVE.src ? '○ 레이더 미연결' : REAL && !LIVE.present ? '○ 부재 · 감지 구역에 사람 없음' : S.rest ? '● 재실 · 휴식 중' : '● 재실 · 정상') : m === 'grace' ? '▲ 낙상 의심 · 응답 확인 중' : '■ 긴급 · 무반응';
+    $('contacts').classList.toggle('alerting', m === 'emergency' && channels().length > 0);
+    $('e119').classList.toggle('on', m === 'emergency' && C.auto119);
+    $('e119s').textContent = !C.auto119 ? '꺼짐 · 수동 신고' : m === 'emergency' ? '위치 전송 완료' : '대기';
+    renderLog();
+  }
+  function toNormal(reason){
+    S.mode = 'normal'; S.wait = 1.5; S.rest = null;
+    $('modal').classList.remove('on');
+    render(); log(reason || '시스템 정상 상태 전환', 'ok');
+  }
+  function toGrace(){
+    if (S.mode !== 'normal') return;
+    const z = zoneAt(S.x, S.y);
+    if (z && !LIVE.src){ S.rest = `'${z.name}' ${z.custom ? '예외 구역' : '안전지대'}`; S.tx = S.x; S.ty = S.y; render(); log(`'${z.name}' ${z.custom ? '예외 구역' : '안전지대'} 안 높이 하강 · 낙상 판정 제외 (1단계 필터)`, 'ok'); return; }
+    S.rest = null;
+    S.mode = 'grace'; S.graceLeft = C.grace; S.tx = S.x; S.ty = S.y;
+    render();
+    if (!LIVE.src) log(`Z축 높이 급감 감지 (${S.z.toFixed(2)}m → ${FALL_Z.toFixed(2)}m, 임계 ${C.th}m)`, 'wn');
+    log(`${C.grace}초 유예 진입${C.voice ? ' · 허브 음성 안내 송출' : ''}`, 'wn');
+    if (C.voice) speak();
+  }
+  function toEmergency(byUser){
+    if (S.mode === 'emergency') return;
+    if (S.mode === 'normal'){ S.tx = S.x; S.ty = S.y; S.rest = null; log('긴급 확정 시뮬레이션 · 즉시 낙상 확정', 'cr'); }
+    else if (!LIVE.src) log('유예 시간 내 무반응 · 최종 낙상 확정', 'cr');
+    S.mode = 'emergency'; render();
+    $('mPos').textContent = REAL ? '레이더 낙상 신호 확인 · 위치 좌표는 MR60FDA2 미제공' : `X ${S.x.toFixed(2)}m · Y ${S.y.toFixed(2)}m · Z ${FALL_Z.toFixed(2)}m`;
+    $('mTime').textContent = today() + ' ' + now();
+    const ch = channels();
+    $('mCh').textContent = (ch.join('·') || '알림 채널 없음') + (C.auto119 ? ' · 119' : '');
+    $('modal').classList.add('on'); $('mAck').focus();
+    const first = (P.contacts || [])[0];
+    if (!LIVE.src){
+      if (ch.length) log(`${first ? first.name + '(' + first.rel + ') 외 ' : ''}보호자 ${ch.join('·')} 알림 발송 (시뮬레이션)`, 'cr');
+      log(C.auto119 ? '119 위치·대상자 정보 전송 (시뮬레이션)' : '119 자동 연동 꺼짐 · 보호자 판단 대기', 'cr');
+    }
+    if (navigator.vibrate) try{ navigator.vibrate([400,200,400]); }catch(e){}
+    brief({ useAi: byUser });
+  }
+  function respond(){
+    if (S.mode === 'normal' && S.rest){ const where = S.rest; S.rest = null; S.wait = 1; render(); log(`${where}에서 기립 · 정상 활동 재개`, 'ok'); return; }
+    if (S.mode === 'grace') toNormal('미세 움직임 감지 · 오탐지 자동 해제');
+    else if (S.mode === 'emergency') toNormal('대상자 반응 확인 · 긴급 해제');
+  }
+  $('bN').onclick = () => toNormal('수동 리셋 · 정상 모드');
+  $('bG').onclick = toGrace;
+  $('bF').onclick = () => toEmergency(true);
+  $('bR').onclick = respond;
+  $('mAck').onclick = () => toNormal('보호자 확인 · 알람 해제');
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('modal').classList.contains('on')) toNormal('보호자 확인 · 알람 해제'); });
+
+  /* ---------- view toggle ---------- */
+  function setView(v){
+    if (v === '3d' && editing) setEditing(false);
+    S.view = v;
+    $('v2d').setAttribute('aria-pressed', String(v === '2d'));
+    $('v3d').setAttribute('aria-pressed', String(v === '3d'));
+    $('hint').textContent = v === '2d' ? '탭하면 대상자 이동' : '드래그하면 회전';
+    $('map').style.touchAction = v === '3d' ? 'none' : 'pan-y';
+  }
+  $('v2d').onclick = () => setView('2d');
+  $('v3d').onclick = () => setView('3d');
+
+  /* ---------- canvas ---------- */
+  const map = $('map'), mx = map.getContext('2d');
+  const chart = $('chart'), cx = chart.getContext('2d');
+  function fit(c){ chartDone = false; const r = c.getBoundingClientRect(), d = DPR(); const w = Math.round(r.width*d), h = Math.round(r.height*d); if (w && (c.width !== w || c.height !== h)){ c.width = w; c.height = h; } }
+  function fitAll(){ fit(map); fit(chart); }
+  addEventListener('resize', fitAll);
+  if ('ResizeObserver' in window){ const ro = new ResizeObserver(fitAll); ro.observe(map); ro.observe(chart); }
+  const g2 = () => { const W = map.width, H = map.height, m = 26*(DPR()), s = Math.min(W-m*2, H-m*2); return { ox:(W-s)/2, oy:(H-s)/2, s, k:s/ROOM }; };
+
+  let drag = null, editing = false, zdraw = null, pendingZone = null;
+  const toRoom = e => { const r = map.getBoundingClientRect(), d = DPR(), g = g2(); return [((e.clientX-r.left)*d - g.ox)/g.k, ((e.clientY-r.top)*d - g.oy)/g.k]; };
+  const clampR = v => Math.max(0, Math.min(ROOM, v));
+  map.addEventListener('pointerdown', e => {
+    if (S.view === '3d'){ drag = { x:e.clientX, yaw:S.yaw }; try{ map.setPointerCapture(e.pointerId); }catch(_){} return; }
+    const [x, y] = toRoom(e);
+    if (editing){
+      if (x < 0 || y < 0 || x > ROOM || y > ROOM) return;
+      zdraw = { x0:clampR(x), y0:clampR(y), x1:clampR(x), y1:clampR(y) };
+      try{ map.setPointerCapture(e.pointerId); }catch(_){}
+      e.preventDefault(); return;
+    }
+    if (x < 0 || y < 0 || x > ROOM || y > ROOM) return;
+    if (S.mode !== 'normal'){ log('유예/긴급 상태에서는 이동할 수 없습니다', 'sys'); return; }
+    if (S.rest){ log('휴식 중입니다. [미세움직임]을 눌러 일으켜 주세요', 'sys'); return; }
+    S.tx = Math.max(.2, Math.min(ROOM-.2, x)); S.ty = Math.max(.2, Math.min(ROOM-.2, y)); S.wait = 99;
+  });
+  map.addEventListener('pointermove', e => {
+    if (drag) S.yaw = drag.yaw + (e.clientX - drag.x)*0.01;
+    if (zdraw){ const [x, y] = toRoom(e); zdraw.x1 = clampR(x); zdraw.y1 = clampR(y); }
+  });
+  map.addEventListener('pointerup', () => {
+    drag = null;
+    if (!zdraw) return;
+    const z = { x:Math.min(zdraw.x0,zdraw.x1), y:Math.min(zdraw.y0,zdraw.y1), w:Math.abs(zdraw.x1-zdraw.x0), h:Math.abs(zdraw.y1-zdraw.y0) };
+    zdraw = null;
+    if (z.w < 0.3 || z.h < 0.3) return;
+    pendingZone = z;
+    $('zSize').textContent = `${z.w.toFixed(1)}m × ${z.h.toFixed(1)}m`;
+    $('zName').value = `예외 구역 #${customZones.length + 1}`;
+    $('zDlg').classList.add('on');
+    setTimeout(() => { $('zName').focus(); $('zName').select(); }, 50);
+  });
+  map.addEventListener('pointercancel', () => { drag = null; zdraw = null; });
+
+  function closeZ(){ $('zDlg').classList.remove('on'); pendingZone = null; }
+  $('zSave').onclick = () => {
+    if (!pendingZone) return closeZ();
+    const name = $('zName').value.trim() || `예외 구역 #${customZones.length + 1}`;
+    const z = Object.assign(pendingZone, { name, hgt:0.4, custom:true });
+    customZones.push(z); store.set('sw-zones', customZones);
+    log(`'${name}' 예외 구역 지정 완료 (${z.w.toFixed(1)}m × ${z.h.toFixed(1)}m)`, 'ok');
+    closeZ(); renderZones();
+  };
+  $('zCancel').onclick = () => { closeZ(); log('예외 구역 지정을 취소했습니다', 'sys'); };
+  $('zName').addEventListener('keydown', e => { if (e.key === 'Enter') $('zSave').click(); if (e.key === 'Escape') $('zCancel').click(); });
+  function setEditing(on){
+    editing = on;
+    if (on && S.view !== '2d') setView('2d');
+    $('zEdit').classList.toggle('on', on); $('zEdit').setAttribute('aria-pressed', String(on));
+    $('zEditTx').textContent = on ? '편집 완료' : '예외 구역 편집';
+    $('zReset').hidden = !on;
+    $('mapBox').classList.toggle('editing', on);
+    $('map').style.touchAction = on || S.view === '3d' ? 'none' : 'pan-y';
+    $('hint').style.display = on ? 'none' : '';
+    $('mapSub').textContent = on ? '레이더 영역을 드래그해서 낙상 예외 구역을 지정하세요' : '안전지대(침대/소파) 식별 및 대상자 실시간 3차원 위치 좌표';
+    log(on ? '예외 구역 편집 모드 시작' : '예외 구역 편집 완료', 'sys');
+  }
+  $('zEdit').onclick = () => setEditing(!editing);
+  $('zReset').onclick = () => { customZones = []; store.set('sw-zones', customZones); renderZones(); log('사용자 지정 예외 구역 전체 초기화', 'wn'); };
+  function renderZones(){
+    $('zlist').innerHTML = allZones().map(z => `<span class="zchip${z.custom ? ' custom' : ''}">${z.custom ? '예외' : '안전지대'} · ${esc(z.name)} <small>${z.w.toFixed(1)}×${z.h.toFixed(1)}m</small></span>`).join('');
+  }
+
+  const COL = { teal:'#2DD4BF', em:'#34D399', amb:'#FBBF24', red:'#F43F5E', ind:'#818CF8' };
+  const pc = () => S.mode === 'emergency' ? COL.red : S.mode === 'grace' ? COL.amb : COL.em;
+  let sweep = 0;
+
+  function sky(ctx, W, H, d){
+    const g = ctx.createRadialGradient(W/2, H*0.45, 0, W/2, H*0.45, Math.max(W,H)*0.75);
+    g.addColorStop(0,'#0B1A36'); g.addColorStop(0.55,'#060E22'); g.addColorStop(1,'#01040D');
+    ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+    const tw = performance.now()/1400;
+    stars.forEach(s => { ctx.globalAlpha = 0.25 + 0.35*Math.abs(Math.sin(tw + s[3]*6)); ctx.fillStyle = '#CFFAFE'; ctx.fillRect(s[0]*W, s[1]*H, s[2]*d, s[2]*d); });
+    ctx.globalAlpha = 1;
+  }
+  function neonLine(ctx, ax, ay, bx, by, major, d){
+    ctx.strokeStyle = major ? 'rgba(45,212,191,.16)' : 'rgba(45,212,191,.07)'; ctx.lineWidth = (major ? 5 : 3)*d;
+    ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by); ctx.stroke();
+    ctx.strokeStyle = major ? 'rgba(94,234,212,.55)' : 'rgba(45,212,191,.22)'; ctx.lineWidth = d;
+    ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by); ctx.stroke();
+  }
+  function glowDot(ctx, x, y, col, r, d, lying){
+    const halo = ctx.createRadialGradient(x,y,0,x,y,r*5);
+    halo.addColorStop(0, col + 'AA'); halo.addColorStop(0.35, col + '40'); halo.addColorStop(1, col + '00');
+    ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(x,y,r*5,0,Math.PI*2); ctx.fill();
+    const p = reduce ? .5 : (performance.now()/950)%1;
+    ctx.strokeStyle = col; ctx.lineWidth = 2*d; ctx.globalAlpha = 1-p;
+    ctx.beginPath(); ctx.arc(x,y,(r*1.6 + p*r*3),0,Math.PI*2); ctx.stroke(); ctx.globalAlpha = 1;
+    ctx.shadowColor = col; ctx.shadowBlur = 18*d; ctx.fillStyle = col;
+    ctx.beginPath(); lying ? ctx.ellipse(x,y,r*2,r*0.9,0.4,0,Math.PI*2) : ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
+    ctx.shadowBlur = 0; ctx.fillStyle = '#F8FAFC';
+    ctx.beginPath(); ctx.arc(x,y,r*0.38,0,Math.PI*2); ctx.fill();
+  }
+  function roundRect(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+  function tag(ctx, txt, x, y, col, d){
+    ctx.font = `700 ${12*d}px "JetBrains Mono","Noto Sans KR",monospace`;
+    const w = ctx.measureText(txt).width + 14*d, h = 22*d;
+    if (x + w > ctx.canvas.width - 6*d) x = ctx.canvas.width - w - 6*d;
+    ctx.fillStyle = 'rgba(2,6,23,.92)'; roundRect(ctx, x, y - h + 6*d, w, h, 6*d); ctx.fill();
+    ctx.strokeStyle = col; ctx.lineWidth = 1.2*d; ctx.shadowColor = col; ctx.shadowBlur = 10*d; ctx.stroke(); ctx.shadowBlur = 0;
+    ctx.fillStyle = '#F8FAFC'; ctx.fillText(txt, x + 7*d, y);
+  }
+
+  function draw2d(){
+    const W = map.width, H = map.height, d = DPR(), ctx = mx, g = g2();
+    if (!W || !H) return;
+    const Pt = (x,y) => [g.ox + x*g.k, g.oy + y*g.k];
+    sky(ctx, W, H, d);
+    for (let i=0;i<=10;i++){ const v = i*0.5*g.k, maj = i%2 === 0; neonLine(ctx, g.ox+v, g.oy, g.ox+v, g.oy+g.s, maj, d); neonLine(ctx, g.ox, g.oy+v, g.ox+g.s, g.oy+v, maj, d); }
+    ctx.shadowColor = COL.teal; ctx.shadowBlur = 14*d; ctx.strokeStyle = '#5EEAD4'; ctx.lineWidth = 2*d; ctx.strokeRect(g.ox, g.oy, g.s, g.s); ctx.shadowBlur = 0;
+    ctx.fillStyle = '#99F6E4'; ctx.font = `600 ${10*d}px "JetBrains Mono",monospace`;
+    for (let i=1;i<=5;i++) ctx.fillText(i+'m', g.ox + i*g.k - 20*d, g.oy + g.s - 6*d);
+    const [sx, sy] = Pt(ROOM/2, ROOM/2);
+    ctx.setLineDash([4*d,6*d]); ctx.strokeStyle = 'rgba(52,211,153,.32)'; ctx.lineWidth = d;
+    for (let r=1;r<=3;r++){ ctx.beginPath(); ctx.arc(sx,sy,r*g.k,0,Math.PI*2); ctx.stroke(); }
+    ctx.setLineDash([]);
+    allZones().forEach(z => {
+      const [x,y] = Pt(z.x,z.y), w = z.w*g.k, h = z.h*g.k;
+      ctx.fillStyle = 'rgba(16,185,129,.14)'; ctx.fillRect(x,y,w,h);
+      ctx.save(); ctx.beginPath(); ctx.rect(x,y,w,h); ctx.clip();
+      ctx.strokeStyle = 'rgba(52,211,153,.22)'; ctx.lineWidth = d;
+      for (let t=-h;t<w+h;t+=11*d){ ctx.beginPath(); ctx.moveTo(x+t,y); ctx.lineTo(x+t-h,y+h); ctx.stroke(); }
+      ctx.restore();
+      ctx.shadowColor = z.custom ? COL.teal : COL.em; ctx.shadowBlur = 10*d; ctx.strokeStyle = z.custom ? '#5EEAD4' : '#6EE7B7'; ctx.lineWidth = 1.6*d; ctx.setLineDash([7*d,4*d]); ctx.strokeRect(x,y,w,h); ctx.setLineDash([]); ctx.shadowBlur = 0;
+      ctx.fillStyle = z.custom ? '#99F6E4' : '#A7F3D0'; ctx.font = `700 ${12*d}px "Noto Sans KR",sans-serif`;
+      ctx.fillText(`${z.custom ? '예외 구역' : '안전지대'} · ${z.name}`, x + 8*d, y + 18*d);
+    });
+    if (!reduce){
+      ctx.save(); ctx.beginPath(); ctx.rect(g.ox,g.oy,g.s,g.s); ctx.clip();
+      const R = g.s*0.75, gr = ctx.createRadialGradient(sx,sy,0,sx,sy,R);
+      gr.addColorStop(0,'rgba(45,212,191,.38)'); gr.addColorStop(1,'rgba(45,212,191,0)');
+      ctx.fillStyle = gr; ctx.beginPath(); ctx.moveTo(sx,sy); ctx.arc(sx,sy,R,sweep-0.5,sweep); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(153,246,228,.8)'; ctx.lineWidth = 1.6*d; ctx.shadowColor = COL.teal; ctx.shadowBlur = 10*d;
+      ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(sx+Math.cos(sweep)*R, sy+Math.sin(sweep)*R); ctx.stroke(); ctx.shadowBlur = 0;
+      ctx.restore();
+    }
+    ctx.shadowColor = COL.teal; ctx.shadowBlur = 12*d; ctx.fillStyle = '#5EEAD4'; ctx.beginPath(); ctx.arc(sx,sy,4.5*d,0,Math.PI*2); ctx.fill(); ctx.shadowBlur = 0;
+    ctx.fillStyle = '#99F6E4'; ctx.font = `600 ${11*d}px "Noto Sans KR",sans-serif`; ctx.fillText(`레이더 (천장 ${C.inst}m)`, sx + 9*d, sy - 7*d);
+    if (zdraw){
+      const [x0, y0] = Pt(Math.min(zdraw.x0,zdraw.x1), Math.min(zdraw.y0,zdraw.y1));
+      const zw = Math.abs(zdraw.x1-zdraw.x0)*g.k, zh = Math.abs(zdraw.y1-zdraw.y0)*g.k;
+      ctx.fillStyle = 'rgba(45,212,191,.28)'; ctx.fillRect(x0,y0,zw,zh);
+      ctx.strokeStyle = '#99F6E4'; ctx.lineWidth = 2*d; ctx.shadowColor = COL.teal; ctx.shadowBlur = 12*d; ctx.strokeRect(x0,y0,zw,zh); ctx.shadowBlur = 0;
+      ctx.fillStyle = '#fff'; ctx.font = `700 ${12*d}px "JetBrains Mono",monospace`;
+      ctx.fillText(`${(zw/g.k).toFixed(1)}m × ${(zh/g.k).toFixed(1)}m`, x0 + 6*d, y0 + 17*d);
+    }
+    S.trail.forEach((p,i) => { const [x,y] = Pt(p[0],p[1]); ctx.globalAlpha = i/S.trail.length*.5; ctx.fillStyle = '#5EEAD4'; ctx.beginPath(); ctx.arc(x,y,2*d,0,Math.PI*2); ctx.fill(); });
+    ctx.globalAlpha = 1;
+    const [px,py] = Pt(S.x,S.y), col = pc();
+    if (seen()){
+      glowDot(ctx, px, py, col, 8*d, d, S.z < 0.8);
+      tag(ctx, REAL ? `${P.name || '대상자'} · ${S.mode === 'normal' ? '재실 감지' : '낙상 신호'} (위치 미제공)` : `${P.name || '대상자'} · Z ${S.z.toFixed(2)}m`, px + 18*d, py - 14*d, col, d);
+    }
+  }
+
+  function draw3d(){
+    const W = map.width, H = map.height, d = DPR(), ctx = mx;
+    if (!W || !H) return;
+    sky(ctx, W, H, d);
+    const sc = Math.min(W/(ROOM*1.75), H/(ROOM*1.25)), ccx = W/2, ccy = H*0.6;
+    const cs = Math.cos(S.yaw), sn = Math.sin(S.yaw);
+    const Pt = (x,y,z) => { const X = x-ROOM/2, Y = y-ROOM/2, xr = X*cs - Y*sn, yr = X*sn + Y*cs; return [ccx + (xr-yr)*0.866*sc, ccy + (xr+yr)*0.5*sc - z*sc*0.9]; };
+    const ln = (a,b) => { ctx.beginPath(); ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]); ctx.stroke(); };
+    for (let i=0;i<=10;i++){ const v = i*0.5, maj = i%2 === 0;
+      let a = Pt(v,0,0), b = Pt(v,ROOM,0); neonLine(ctx,a[0],a[1],b[0],b[1],maj,d);
+      a = Pt(0,v,0); b = Pt(ROOM,v,0); neonLine(ctx,a[0],a[1],b[0],b[1],maj,d); }
+    const c4 = [[0,0],[ROOM,0],[ROOM,ROOM],[0,ROOM]];
+    ctx.shadowColor = COL.teal; ctx.shadowBlur = 12*d; ctx.strokeStyle = '#5EEAD4'; ctx.lineWidth = 2*d;
+    c4.forEach((c,i) => { const n = c4[(i+1)%4]; ln(Pt(c[0],c[1],0), Pt(n[0],n[1],0)); }); ctx.shadowBlur = 0;
+    const sp = Pt(ROOM/2, ROOM/2, C.inst);
+    ctx.strokeStyle = 'rgba(45,212,191,.16)'; ctx.lineWidth = d; c4.forEach(c => ln(sp, Pt(c[0],c[1],0)));
+    ctx.shadowColor = COL.teal; ctx.shadowBlur = 12*d; ctx.fillStyle = '#5EEAD4'; ctx.beginPath(); ctx.arc(sp[0],sp[1],4.5*d,0,Math.PI*2); ctx.fill(); ctx.shadowBlur = 0;
+    ctx.fillStyle = '#99F6E4'; ctx.font = `600 ${11*d}px "Noto Sans KR",sans-serif`; ctx.fillText(`레이더 ${C.inst}m`, sp[0] + 9*d, sp[1]);
+    allZones().forEach(z => {
+      const b = [[z.x,z.y],[z.x+z.w,z.y],[z.x+z.w,z.y+z.h],[z.x,z.y+z.h]];
+      ctx.fillStyle = 'rgba(16,185,129,.18)'; ctx.beginPath();
+      b.forEach((p,i) => { const q = Pt(p[0],p[1],z.hgt); i ? ctx.lineTo(q[0],q[1]) : ctx.moveTo(q[0],q[1]); }); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#6EE7B7'; ctx.lineWidth = 1.3*d; ctx.shadowColor = COL.em; ctx.shadowBlur = 8*d;
+      b.forEach((p,i) => { const n = b[(i+1)%4]; ln(Pt(p[0],p[1],0),Pt(n[0],n[1],0)); ln(Pt(p[0],p[1],z.hgt),Pt(n[0],n[1],z.hgt)); ln(Pt(p[0],p[1],0),Pt(p[0],p[1],z.hgt)); });
+      ctx.shadowBlur = 0;
+      const t = Pt(z.x+z.w/2, z.y+z.h/2, z.hgt);
+      ctx.fillStyle = '#A7F3D0'; ctx.font = `700 ${12*d}px "Noto Sans KR",sans-serif`; ctx.textAlign = 'center'; ctx.fillText((z.custom ? '예외 · ' : '안전지대 · ') + z.name, t[0], t[1] + 4*d); ctx.textAlign = 'start';
+    });
+    ctx.strokeStyle = 'rgba(165,180,252,.7)'; ctx.lineWidth = 1.2*d; ln(Pt(0,0,0), Pt(0,0,2.5));
+    ctx.fillStyle = '#C7D2FE'; ctx.font = `600 ${10*d}px "JetBrains Mono",monospace`;
+    for (let h=0.5; h<=2.5; h+=0.5){ const q = Pt(0,0,h); ln([q[0]-5*d,q[1]],[q[0]+5*d,q[1]]); ctx.fillText(h.toFixed(1)+'m', q[0]-40*d, q[1]+4*d); }
+    const col = pc(), base = Pt(S.x,S.y,0), top = Pt(S.x,S.y,S.z);
+    if (!seen()) return;
+    const sh = ctx.createRadialGradient(base[0],base[1],0,base[0],base[1],22*d); sh.addColorStop(0,col+'66'); sh.addColorStop(1,col+'00');
+    ctx.fillStyle = sh; ctx.beginPath(); ctx.ellipse(base[0],base[1],22*d,11*d,0,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle = col; ctx.lineWidth = 3*d; ctx.shadowColor = col; ctx.shadowBlur = 14*d; ln(base, top); ctx.shadowBlur = 0;
+    glowDot(ctx, top[0], top[1], col, 7*d, d, false);
+    ctx.setLineDash([3*d,4*d]); ctx.strokeStyle = 'rgba(165,180,252,.5)'; ctx.lineWidth = d; ln(top, Pt(0,0,S.z)); ctx.setLineDash([]);
+    tag(ctx, REAL ? (S.mode === 'normal' ? '재실 감지 (위치 미제공)' : '낙상 신호 (위치 미제공)') : `Z ${S.z.toFixed(2)}m`, top[0] + 16*d, top[1] - 10*d, col, d);
+  }
+
+  function drawChart(){
+    const W = chart.width, H = chart.height, d = DPR(), ctx = cx;
+    if (!W || !H) return;
+    if (REAL){
+      ctx.fillStyle = '#020617'; ctx.fillRect(0,0,W,H);
+      ctx.fillStyle = '#94A3B8'; ctx.textAlign = 'center';
+      ctx.font = `600 ${13*d}px "Noto Sans KR",sans-serif`;
+      ctx.fillText('높이(Z)·호흡 그래프는 표시하지 않습니다', W/2, H/2 - 8*d);
+      ctx.font = `${11*d}px "Noto Sans KR",sans-serif`;
+      ctx.fillText('MR60FDA2 레이더는 재실·낙상 신호만 제공합니다 (실측값만 표시 중)', W/2, H/2 + 14*d);
+      ctx.textAlign = 'start'; chartDone = true; return;
+    }
+    const bg = ctx.createLinearGradient(0,0,0,H); bg.addColorStop(0,'#071225'); bg.addColorStop(1,'#020617');
+    ctx.fillStyle = bg; ctx.fillRect(0,0,W,H);
+    const l = 44*d, r = 40*d, t = 14*d, b = 24*d, w = W-l-r, h = H-t-b;
+    ctx.font = `600 ${10.5*d}px "JetBrains Mono",monospace`;
+    for (let i=0;i<=5;i++){
+      const y = t + h - i/5*h;
+      ctx.strokeStyle = 'rgba(148,163,184,.14)'; ctx.lineWidth = d; ctx.beginPath(); ctx.moveTo(l,y); ctx.lineTo(l+w,y); ctx.stroke();
+      ctx.fillStyle = '#5EEAD4'; ctx.textAlign = 'right'; ctx.fillText((i*0.5).toFixed(1), l - 7*d, y + 4*d);
+      ctx.fillStyle = '#A5B4FC'; ctx.textAlign = 'left'; ctx.fillText(String(i*6), l + w + 7*d, y + 4*d);
+    }
+    for (let i=0;i<=6;i++){ const x = l + i/6*w; ctx.strokeStyle = 'rgba(148,163,184,.07)'; ctx.beginPath(); ctx.moveTo(x,t); ctx.lineTo(x,t+h); ctx.stroke(); }
+    const ty = t + h - (C.th/2.5)*h;
+    ctx.strokeStyle = 'rgba(244,63,94,.85)'; ctx.lineWidth = 1.3*d; ctx.setLineDash([6*d,5*d]); ctx.beginPath(); ctx.moveTo(l,ty); ctx.lineTo(l+w,ty); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = '#FDA4AF'; ctx.textAlign = 'left'; ctx.font = `700 ${10.5*d}px "Noto Sans KR",sans-serif`; ctx.fillText(`낙상 임계 ${C.th}m`, l + 8*d, ty - 6*d);
+    ctx.fillStyle = '#94A3B8'; ctx.font = `600 ${10*d}px "JetBrains Mono",monospace`; ctx.textAlign = 'center';
+    ctx.fillText('-60s', l + 12*d, H - 7*d); ctx.fillText('-30s', l + w/2, H - 7*d); ctx.fillText('NOW', l + w - 12*d, H - 7*d); ctx.textAlign = 'left';
+    const n = hist.z.length;
+    const path = (arr, max) => { ctx.beginPath(); arr.forEach((v,i) => { const x = l + i/(n-1)*w, y = t + h - Math.max(0,Math.min(1, v/max))*h; i ? ctx.lineTo(x,y) : ctx.moveTo(x,y); }); };
+    path(hist.z, 2.5); ctx.lineTo(l+w, t+h); ctx.lineTo(l, t+h); ctx.closePath();
+    const ga = ctx.createLinearGradient(0,t,0,t+h); ga.addColorStop(0,'rgba(45,212,191,.32)'); ga.addColorStop(1,'rgba(45,212,191,0)'); ctx.fillStyle = ga; ctx.fill();
+    ctx.shadowColor = COL.teal; ctx.shadowBlur = 10*d; path(hist.z, 2.5); ctx.strokeStyle = '#5EEAD4'; ctx.lineWidth = 2.6*d; ctx.stroke();
+    ctx.shadowColor = COL.ind; path(hist.b, 30); ctx.strokeStyle = '#A5B4FC'; ctx.lineWidth = 2*d; ctx.stroke(); ctx.shadowBlur = 0;
+    const lx = l + w, lz = t + h - Math.min(1, hist.z[n-1]/2.5)*h, lb = t + h - Math.min(1, hist.b[n-1]/30)*h;
+    [[lz,'#5EEAD4'],[lb,'#A5B4FC']].forEach(([y,c]) => { ctx.fillStyle = c; ctx.shadowColor = c; ctx.shadowBlur = 10*d; ctx.beginPath(); ctx.arc(lx,y,3.5*d,0,Math.PI*2); ctx.fill(); ctx.shadowBlur = 0; });
+  }
+
+  /* ---------- loop ---------- */
+  let last = performance.now(), sT = 0, uT = 0;
+  let dT = 0, chartDone = false;
+  function frame(t){
+    const dt = Math.min(0.1, (t-last)/1000); last = t;
+    sweep += dt*1.4;
+    if (S.view === '3d' && !drag && !reduce) S.yaw += dt*0.08;
+    if (!REAL && S.mode === 'normal' && !S.rest){
+      const dx = S.tx-S.x, dy = S.ty-S.y, dist = Math.hypot(dx,dy);
+      if (dist > 0.03){ const v = Math.min(dist, 0.6*dt); S.x += dx/dist*v; S.y += dy/dist*v; }
+      else { S.wait -= dt; if (S.wait <= 0){ pick(); S.wait = 1.5 + Math.random()*3; } }
+    }
+    const zt = S.mode === 'normal' ? (S.rest ? 0.5 : REAL ? STAND_Z : STAND_Z + Math.sin(t/700)*0.015) : FALL_Z;
+    S.z += (zt - S.z) * Math.min(1, dt*(S.mode === 'normal' ? 3 : 7));
+    const bt = S.mode === 'normal' ? 16 : S.mode === 'grace' ? 22 : 9;
+    S.bpm += (bt - S.bpm) * Math.min(1, dt*0.8);
+    if (S.mode === 'grace'){
+      S.graceLeft -= dt;
+      const sec = Math.max(0, Math.ceil(S.graceLeft));
+      $('gsec').textContent = sec;
+      $('s2t').textContent = `⏳ 검증 중 ${sec}초`;
+      $('s2bar').style.width = Math.max(0, S.graceLeft/C.grace*100) + '%';
+      if (S.graceLeft <= 0 && !LIVE.src) toEmergency(false);   // 실시간 연결 중엔 보드가 판정
+    }
+    sT += dt;
+    if (sT >= 0.5 && !REAL){ sT = 0;
+      hist.z.push(S.z + (Math.random()-.5)*0.02); hist.z.shift();
+      hist.b.push(S.bpm + (Math.random()-.5)*1.2); hist.b.shift();
+      S.trail.push([S.x,S.y]); if (S.trail.length > 24) S.trail.shift();
+    }
+    uT += dt;
+    if (uT >= 0.2){ uT = 0;
+      const bpm = Math.round(hist.b[hist.b.length-1]);
+      $('clock').textContent = today() + ' ' + now();
+      if (S.tab === 'live'){
+        if (REAL){
+          ['cx','cy','cz','vz','vb'].forEach(id => { $(id).textContent = '—'; $(id).classList.add('nodata'); });
+        } else {
+          $('cx').textContent = S.x.toFixed(2)+'m'; $('cy').textContent = S.y.toFixed(2)+'m'; $('cz').textContent = S.z.toFixed(2)+'m';
+          $('vz').textContent = S.z.toFixed(2); $('vb').textContent = bpm;
+        }
+      }
+    }
+    dT += dt;
+    if (S.tab === 'live' && dT >= 1/30){ dT = 0; S.view === '2d' ? draw2d() : draw3d(); if (!REAL || !chartDone) drawChart(); }
+    requestAnimationFrame(frame);
+  }
+  function pick(){
+    for (let i=0;i<20;i++){
+      const x = 0.4 + Math.random()*(ROOM-0.8), y = 0.4 + Math.random()*(ROOM-0.8);
+      if (!allZones().some(z => x > z.x-.2 && x < z.x+z.w+.2 && y > z.y-.2 && y < z.y+z.h+.2)){ S.tx = x; S.ty = y; return; }
+    }
+  }
+
+  /* ---------- TTS ---------- */
+  function speak(){
+    $('eq').classList.add('on'); setTimeout(() => $('eq').classList.remove('on'), 3500);
+    if (!('speechSynthesis' in window)) return;
+    try{ const u = new SpeechSynthesisUtterance($('tts').textContent.replace(/["“”]/g,'')); u.lang = 'ko-KR'; u.rate = 0.95; speechSynthesis.cancel(); speechSynthesis.speak(u); }catch(e){}
+  }
+  $('bPlay').onclick = speak;
+
+  /* ---------- Claude ---------- */
+  // Claude 연결 순서: ① claude.ai 안에서 열면 window.claude  ② 배포된 사이트면 내 서버 함수(/.netlify/functions/claude)  ③ 둘 다 없으면 예시 응답
+  const API = '/.netlify/functions/claude';
+  let sample = null, server = false, ai = 'checking', busy = false, ruleMode = null;
+  const badge = (txt, cls) => { const b = $('aiBadge'); b.textContent = txt; b.className = 'badge' + (cls ? ' '+cls : ''); };
+  const idle = () => badge(ai === 'ready' ? (server ? 'Claude API 연결됨' : 'Claude 준비 완료') : ai === 'denied' ? '사용 거절 · 예시 응답' : ai === 'checking' ? '연결 확인 중' : '오프라인 · 예시 응답', ai === 'ready' ? 'ready' : '');
+  (async () => {
+    try{ if (window.claude && typeof window.claude.use === 'function') sample = await window.claude.use('sample'); }catch(e){ sample = null; }
+    if (!sample && /^https?:$/.test(location.protocol)){
+      try{ const r = await fetch(API, { method:'GET', headers:{ 'accept':'application/json' } }); if (r.ok){ const j = await r.json(); server = !!(j && j.ok); } }catch(e){ server = false; }
+    }
+    ai = (sample || server) ? 'ready' : 'off';
+    $('footAi').textContent = sample ? 'Claude AI Connected' : server ? 'Claude API Connected' : 'Claude AI (오프라인)';
+    $('sysAi').textContent = sample ? 'Claude · claude.ai 연결' : server ? 'Claude API · 서버 함수 연결' : 'Claude · 미연결 (예시 응답)';
+    idle();
+  })();
+  async function ask(prompt, { onText, json } = {}){
+    if (ai !== 'ready') return null;
+    if (sample){
+      try{
+        const o = { modelTier:'quick' }; if (onText) o.onText = onText;
+        if (json) return await sample.json(prompt, o);
+        const r = await sample(prompt, o); return r && r.text ? r.text : null;
+      }catch(e){ if (e && e.code === 'not_granted') ai = 'denied'; console.warn(e && e.code); return null; }
+    }
+    if (server){
+      try{
+        const r = await fetch(API, { method:'POST', headers:{ 'content-type':'application/json' }, body: JSON.stringify({ prompt, json: !!json }) });
+        if (r.status === 429){ log('AI 요청이 너무 잦습니다 · 1분 뒤 다시 시도하세요 (예시 응답 표시)', 'wn'); return null; }
+        if (!r.ok){ console.warn('Claude 서버 함수 오류', r.status); return null; }
+        const d = await r.json();
+        if (json) return d && d.json !== undefined ? d.json : null;
+        const text = d && typeof d.text === 'string' ? d.text : null;
+        if (text && onText) onText({ text });
+        return text;
+      }catch(e){ console.warn('Claude 서버 함수 호출 실패', e); return null; }
+    }
+    return null;
+  }
+  const md = s => esc(s).replace(/^#{1,4}\s*(.*)$/gm,'<strong>$1</strong>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');
+  const src = fromAi => `<div class="src${fromAi ? ' ai' : ''}">${fromAi ? 'Claude 생성' : '예시 응답 · Claude 미연결'} · ${now()}</div>`;
+  const RULE = '한국어로, 간결한 개조식으로 답하세요. 마크다운은 **굵게**와 줄바꿈만 쓰고 표·코드블록은 쓰지 마세요. 아래 데이터에 없는 사실은 지어내지 말고 "확인 필요"로 쓰세요.';
+  const data = () => `[대상자 정보]
+${P.name} / ${P.age}세 / ${P.sex} / 혈액형 ${P.blood}
+주소: ${P.addr || '미상'}
+기저질환: ${P.cond || '없음'} / 복용약: ${P.meds || '없음'}
+보행: ${P.mob || '미상'} / 특이사항: ${P.note || '없음'}
+
+${REAL ? `[센서 데이터 · 실측 (MR60FDA2)]
+노드: 대구 102동 거실 #1 / 상태: ${S.mode.toUpperCase()}
+재실: ${LIVE.src ? (LIVE.present ? '감지' : '없음') : '레이더 미연결'} / 낙상 신호: ${S.mode === 'normal' ? '없음' : '감지'}
+위치 좌표·높이·호흡수: 이 센서는 제공하지 않음 (확인 필요)` : `[센서 데이터 · 시뮬레이션]
+노드: 대구 102동 거실 #1 / 상태: ${S.mode.toUpperCase()}
+좌표: X=${S.x.toFixed(2)}m, Y=${S.y.toFixed(2)}m, Z=${S.z.toFixed(2)}m (평상시 ${STAND_Z}m, 낙상 임계 ${C.th}m)
+호흡: ${Math.round(S.bpm)} bpm`}
+유예 반응: ${S.mode === 'emergency' ? C.grace + '초 무반응' : S.mode === 'grace' ? '검증 중' : '해당 없음'}`;
+  const lock = on => { busy = on; ['aB','aV','aJ','qBtn','rRefresh'].forEach(id => $(id).disabled = on); };
+
+  async function brief({ useAi = true } = {}){
+    if (busy && useAi) return;
+    const out = $('out'); let text = null;
+    if (useAi && ai === 'ready'){
+      lock(true); badge('Claude 분석 중...', 'work');
+      out.innerHTML = '<div class="cur" style="color:var(--mu)">센서·대상자 데이터 분석 중 </div>';
+      text = await ask(`역할: 119 응급 지휘 보조 AI. 아래 데이터로 구급대·보호자용 상황 브리핑을 작성하세요.
+형식: **1. 환자 정보** / **2. 상황 요약** / **3. 위험도** / **4. 구급대 권장 조치** 각 2줄 내외. 기저질환과 복용약을 고려하세요. ${RULE}
+
+${data()}`, { onText: ({ text }) => { out.innerHTML = '<div class="cur">' + md(text) + '</div>'; $('mSum').innerHTML = md(text); } });
+      lock(false);
+    }
+    const fromAi = !!text;
+    if (!text){
+      const al = S.mode !== 'normal';
+      text = `**[119 요약 리포트 · ${now()}]**
+**1. 환자 정보**
+- ${P.name} · ${P.age}세 ${P.sex} · 혈액형 ${P.blood}
+- 기저질환 ${P.cond || '없음'} · 복용약 ${P.meds || '없음'}
+**2. 상황 요약**
+- 거실 #1, ${REAL ? (al ? `레이더 낙상 신호 후 ${C.grace}초 기립 없음` : '낙상 신호 없음') + ' · 호흡수 확인 필요(센서 미제공)' : `${al ? `Z축 ${STAND_Z}m → ${S.z.toFixed(2)}m 급감 후 무반응` : '평상시 활동 상태'} · 호흡 ${Math.round(S.bpm)} bpm`}
+**3. 위험도**
+- ${S.mode === 'emergency' ? '높음 · 즉시 출동 권장' : S.mode === 'grace' ? '주의 · 유예 검증 중' : '낮음'}${/골다공/.test(P.cond || '') ? ' · 골다공증으로 골절 가능성 확인 필요' : ''}
+**4. 구급대 권장 조치**
+- ${REAL ? '거실 #1 진입' : `거실 X ${S.x.toFixed(1)}m · Y ${S.y.toFixed(1)}m 진입`}, 의식·호흡 확인 및 경추 보호`;
+    }
+    out.innerHTML = md(text) + src(fromAi);
+    $('mSum').innerHTML = md(text);
+    if (fromAi){ badge('✓ 브리핑 완료', 'done'); log('Claude: 119 요약 리포트 생성 완료', 'ai'); } else idle();
+  }
+
+  async function voice(){
+    if (busy) return;
+    let t = null;
+    const call = P.name ? P.name.slice(-2) + ' 어르신' : '어르신';
+    if (ai === 'ready'){
+      lock(true); badge('멘트 생성 중...', 'work');
+      $('tts').textContent = '안내 멘트를 만드는 중...';
+      const sit = S.mode === 'normal' ? '평상시 생활 중' : S.mode === 'grace' ? '낙상이 의심되어 반응을 확인해야 하는 상황' : '낙상 후 무반응으로 보호자와 119에 알림이 간 상황';
+      t = await ask(`${P.age}세 어르신(호칭: "${call}")이 거실에서 ${sit}입니다. 보행 상태: ${P.mob || '미상'}. 허브 스피커로 송출할 다정하고 또박또박한 한국어 안내 문장을 2문장 이내로 쓰세요. 따옴표·머리말 없이 문장만.`);
+      lock(false);
+    }
+    const fromAi = !!t;
+    if (!t) t = S.mode === 'emergency' ? `${call}, 보호자님과 119에 연락드렸습니다. 움직이지 마시고 편안히 숨 쉬며 기다려 주세요.`
+      : S.mode === 'grace' ? `${call}, 괜찮으십니까? 움직이실 수 있다면 손을 들어 주세요.`
+      : `${call}, 오늘도 안전하게 지켜보고 있습니다. 편안한 하루 보내세요.`;
+    $('tts').textContent = '"' + t.trim().replace(/^["“]|["”]$/g,'') + '"';
+    if (fromAi){ badge('✓ 멘트 생성 완료', 'done'); log('Claude: TTS 안내 멘트 생성', 'ai'); } else idle();
+    speak();
+  }
+
+  const hl = obj => esc(JSON.stringify(obj, null, 2))
+    .replace(/(&quot;[^&]*?&quot;)(\s*:)/g, '<span class="k">$1</span>$2')
+    .replace(/:\s(&quot;.*?&quot;)/g, ': <span class="s">$1</span>')
+    .replace(/:\s(-?\d+(\.\d+)?|true|false)/g, ': <span class="n">$1</span>');
+  async function diag(){
+    if (busy) return;
+    const out = $('out'); let r = null;
+    if (ai === 'ready'){
+      lock(true); badge('JSON 진단 중...', 'work');
+      out.innerHTML = '<div class="cur" style="color:var(--mu)">위험도 구조화 중 </div>';
+      const res = await ask(`역할: 고령자 낙상 위험 평가 AI. 아래 데이터를 평가해 JSON 객체 하나만 출력하세요.
+형식: {"riskLevel":1-5 정수,"riskLabel":"짧은 한국어","status":"${S.mode.toUpperCase()}","patient":"이름·나이·성별","findings":["…","…"],"actions":["…","…","…"],"notifyGuardian":true/false,"notify119":true/false}
+각 문자열은 한 문장. ${RULE}
+
+${data()}`, { json:true });
+      if (res && typeof res === 'object' && !Array.isArray(res)) r = res;
+      lock(false);
+    }
+    const fromAi = !!r;
+    if (!r){
+      const lv = S.mode === 'emergency' ? 5 : S.mode === 'grace' ? 3 : 1;
+      r = { riskLevel: lv, riskLabel: lv === 5 ? '즉시 구조 필요' : lv === 3 ? '낙상 의심' : '정상 생활', status: S.mode.toUpperCase(),
+        patient: `${P.name} · ${P.age}세 · ${P.sex}`,
+        findings: REAL ? [`낙상 신호: ${S.mode === 'normal' ? '없음' : '감지'}`, `재실: ${LIVE.src ? (LIVE.present ? '감지' : '없음') : '레이더 미연결'}`, `기저질환: ${P.cond || '없음'}`] : [`Z 높이 ${S.z.toFixed(2)}m (평상시 ${STAND_Z}m)`, `호흡 ${Math.round(S.bpm)} bpm`, `기저질환: ${P.cond || '없음'}`],
+        actions: lv === 5 ? ['119 출동 요청','1순위 보호자 즉시 연락','현관 개방 준비'] : lv === 3 ? ['음성 응답 확인',`${C.grace}초 후 재판정`,'보호자 대기 알림'] : ['정상 모니터링 유지','야간 동선 조명 확인','안전지대 경계 점검'],
+        notifyGuardian: lv >= 3, notify119: lv === 5 && C.auto119 };
+    }
+    const lv = Number(r.riskLevel) || 0;
+    const c = lv >= 4 ? ['#FB7185','rgba(136,19,55,.4)'] : lv >= 2 ? ['#FBBF24','rgba(120,53,15,.4)'] : ['#34D399','rgba(6,78,59,.4)'];
+    out.innerHTML = `<div class="risk" style="border-color:${c[0]};background:${c[1]}"><span style="color:var(--tx2)">AI 종합 위험도</span><b style="color:${c[0]}">Lv.${esc(lv)} · ${esc(r.riskLabel || '')}</b></div><pre>${hl(r)}</pre>` + src(fromAi);
+    if (fromAi){ badge('✓ 진단 완료', 'done'); log('Claude: JSON 위험도 진단 수신', 'ai'); } else idle();
+  }
+  $('aB').onclick = () => brief({ useAi:true });
+  $('aV').onclick = voice;
+  $('aJ').onclick = diag;
+
+
+  /* ---------- AI 주거 안전 3대 수칙 ---------- */
+  function defaultRules(m){
+    if (m === 'emergency') return { tag:'🚨 긴급 상황 비상 수칙', items:['119 구급대 진입을 위해 현관 개방 준비','무리하게 일으키지 말고 호흡 유지 후 대기','1순위 보호자에게 위치·상황 즉시 공유'] };
+    if (m === 'grace') return { tag:'🟡 낙상 의심 유예 상황 수칙', items:['천천히 호흡하며 손끝이나 발끝을 움직이세요','괜찮다면 손을 크게 흔들어 신호를 주세요',`${C.grace}초 무반응 시 보호자와 119에 자동 전송됩니다`] };
+    return { tag:'거실 노드 권장 케어 수칙', items:['야간 거실 통로에 LED 동작감지 야광등 배치','화장실 입구와 소파 주변 미끄럼방지 패드 설치','SafeWave mmWave 레이더 24시간 감지 중'] };
+  }
+  function setRules(r, fromAi){
+    $('rules').className = 'rules' + (S.mode === 'normal' ? '' : ' ' + S.mode);
+    $('rTag').innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34D399" stroke-width="2.6" stroke-linecap="round"><path d="M5 12l5 5 9-10"/></svg>${esc(r.tag)}${fromAi ? ' <span style="font-size:10.5px;color:#FDBA9A;font-weight:700">· Claude</span>' : ''}`;
+    const dots = ['#2DD4BF','#FBBF24','#818CF8'];
+    $('rList').innerHTML = r.items.slice(0,3).map((t,i) => `<li><i style="background:${dots[i]};box-shadow:0 0 6px ${dots[i]}"></i><span>${i+1}. ${esc(String(t).replace(/^\d+[.)]\s*/,''))}</span></li>`).join('');
+  }
+  $('rRefresh').onclick = async () => {
+    if (busy) return;
+    const base = defaultRules(S.mode);
+    if (ai !== 'ready'){ setRules(base, false); log('주거 안전 수칙 상태별 갱신', 'sys'); return; }
+    lock(true); badge('수칙 갱신 중...', 'work');
+    const r = await ask(`고령자 낙상 감지 시스템의 현재 상태는 ${S.mode.toUpperCase()}(NORMAL=정상, GRACE=낙상 의심 유예 중, EMERGENCY=긴급 확정)입니다.
+대상자: ${P.age}세 ${P.sex}, 기저질환 ${P.cond || '없음'}, 보행 ${P.mob || '미상'}, 특이사항 ${P.note || '없음'}.
+이 상황에서 어르신 또는 보호자가 지켜야 할 안전 수칙 3개를 한국어로, 각 28자 이내로 작성하세요. JSON 문자열 배열 하나만 출력하세요. 예: ["…","…","…"]`, { json:true });
+    lock(false);
+    if (Array.isArray(r) && r.length >= 3){ setRules({ tag: base.tag, items: r }, true); badge('✓ 수칙 갱신 완료', 'done'); log('Claude: 주거 안전 3대 수칙 맞춤 갱신', 'ai'); }
+    else { setRules(base, false); idle(); }
+  };
+
+  /* ---------- 공지사항 ---------- */
+  const NOTICES = [
+    { b:'must', bt:'필독', d:'2026-09-12', t:'mmWave 60GHz 센서 펌웨어 v2.4 업데이트', s:'포인트 클라우드 알고리즘 개선 및 오탐지율 축소', body:'60GHz 레이더 센서의 포인트 클라우드 클러스터링 알고리즘이 개선되었습니다. 침대·소파 위 정적 상태 판별이 안정화되었고 반려동물 구별 필터가 조정되었습니다. (프로토타입 예시 공지)' },
+    { b:'info', bt:'안내', d:'2026-09-08', t:'추석 연휴 관제센터 & 119 비상 연동 점검', s:'비상 연락처 및 비접촉 센서 24시간 정상 작동 모니터링', body:'추석 연휴 기간 24시간 관제와 119 긴급 연동 통신 점검을 완료했습니다. 보호자 비상 연락처 변경이 필요하면 [대상자 정보] 메뉴에서 수정해 주세요. (프로토타입 예시 공지)' },
+    { b:'feat', bt:'기능', d:'2026-08-30', t:'Claude AI 응급 추론 엔진 적용', s:'실시간 119 요약 브리핑 및 맞춤형 케어 멘트 자동 생성', body:'낙상 발생 시 Claude가 센서 데이터와 대상자 정보를 바탕으로 119 구급대 전달용 요약 브리핑과 어르신 맞춤 스피커 안내 멘트를 생성합니다. Q&A에서 설치·운영 관련 질문도 할 수 있습니다.' }
+  ];
+  $('notices').innerHTML = NOTICES.map((n,i) => `<button type="button" class="ntc" data-n="${i}"><div style="min-width:0"><div class="tl"><span class="nb ${n.b}">${n.bt}</span><b>${esc(n.t)}</b></div><div class="ds">${esc(n.s)}</div></div><span class="dt">${n.d.slice(5).replace('-','.')}</span></button>`).join('');
+  let lastFocus = null;
+  $('notices').addEventListener('click', e => {
+    const b = e.target.closest('.ntc'); if (!b) return;
+    const n = NOTICES[+b.dataset.n]; lastFocus = b;
+    $('ntBadge').className = 'nb ' + n.b; $('ntBadge').textContent = n.bt; $('ntDate').textContent = n.d;
+    $('ntTitle').textContent = n.t; $('ntBody').textContent = n.body;
+    $('ntDlg').classList.add('on'); $('ntClose').focus();
+  });
+  const closeNt = () => { $('ntDlg').classList.remove('on'); if (lastFocus) lastFocus.focus(); };
+  $('ntClose').onclick = closeNt; $('ntX').onclick = closeNt;
+  $('ntDlg').addEventListener('click', e => { if (e.target === $('ntDlg')) closeNt(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('ntDlg').classList.contains('on')) closeNt(); });
+
+  /* ---------- AI 심층 질의응답 ---------- */
+  function fallbackAnswer(q){
+    if (q.includes('화장실')) return `**[화장실 설치 안내]**
+- 60GHz 레이더는 빛과 무관하게 동작하지만, 수증기·물줄기는 반사 노이즈가 될 수 있습니다.
+- 습기에 견디는 등급인지 제조사 사양을 먼저 확인하세요.
+- 타일 반사를 줄이려면 천장 중앙에서 아래 방향으로 설치하는 것이 일반적입니다.`;
+    if (q.includes('반려동물')) return `**[반려동물 오탐지 방지]**
+- 낙상 판정은 사람 키 높이의 대상이 임계값(${C.th}m) 아래로 급히 떨어지는지를 봅니다.
+- 소형 반려동물은 평소 높이가 낮아 대부분 걸러지지만, 대형견은 오탐지가 생길 수 있습니다.
+- 실제 환경에서 반려동물 이동 시나리오로 반복 시험해 민감도를 조정하세요.`;
+    if (q.includes('새벽') || q.includes('야간')) return `**[야간·새벽 안전 수칙]**
+- **동선 조명:** 침실에서 화장실까지 동작감지 야광등을 두세요.
+- **장애물 정리:** 전선, 발매트처럼 걸리는 물건을 치워 주세요.
+- **천천히 기립:** 일어날 때 잠시 앉아 있다가 움직이면 어지럼을 줄일 수 있습니다.`;
+    return `**[SafeWave AI 답변]**
+현재 Claude에 연결되지 않아 예시 응답만 표시됩니다.
+- 질문: "${q}"
+- 서버에 ANTHROPIC_API_KEY를 설정하거나 claude.ai에서 열면 Claude가 실시간 센서·대상자 맥락을 반영해 답합니다.`;
+  }
+  async function askQuestion(q){
+    q = (q || '').trim();
+    if (!q || busy) return;
+    const out = $('out'), head = `<div class="q">Q. ${esc(q)}</div>`;
+    let text = null;
+    if (ai === 'ready'){
+      lock(true); badge('Claude 답변 생성 중...', 'work');
+      out.innerHTML = head + '<div class="cur" style="color:var(--mu)">답변을 준비하는 중 </div>';
+      text = await ask(`역할: SafeWave 낙상 감지 시스템의 고령자 케어 상담원. 질문에 친절하고 정확하게 5~8줄로 답하세요. 레이더 기술과 고령자 주거 안전 지식을 결합하되, 확실하지 않은 제품 사양(방수 등급, 정확도 수치 등)은 단정하지 말고 제조사 사양 확인을 권하세요. ${RULE}
+
+${data()}
+
+[사용자 질문]
+${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md(text) + '</div>'; } });
+      lock(false);
+    }
+    const fromAi = !!text;
+    if (!text) text = fallbackAnswer(q);
+    out.innerHTML = head + md(text) + src(fromAi);
+    if (fromAi){ badge('✓ 답변 완료', 'done'); log(`Claude AI 질문 답변 완료: "${q.slice(0, 18)}${q.length > 18 ? '…' : ''}"`, 'ai'); } else idle();
+  }
+  $('qform').addEventListener('submit', e => { e.preventDefault(); const v = $('qIn').value; $('qIn').value = ''; askQuestion(v); });
+  document.querySelector('.qchips').addEventListener('click', e => { const b = e.target.closest('button[data-q]'); if (b) askQuestion(b.dataset.q); });
+
+  /* ---------- start ---------- */
+  renderZones(); renderProfile(); applySettings(); fitAll(); setView('2d');
+  log('SafeWave 레이더 시스템 초기화 완료 · 60GHz 노드 online', 'ok');
+  requestAnimationFrame(frame);
+
+  /* =====================================================================
+     실시간 레이더 연결 (SafeWave Live)
+     - USB: 크롬/엣지 Web Serial 로 XIAO ESP32C6 (SafeWave_Node 펌웨어) 직접 연결
+     - 원격: Firebase nodes/{노드}/live 구독 (보호자 앱과 같은 데이터)
+     - 경보: 유예 중 비프음, 긴급 확정 시 사이렌 · 진동 · 브라우저 알림 · 탭 제목 깜빡임
+     ===================================================================== */
+  const LS = { get: k => store.get('sw-live-' + k), set: (k, v) => store.set('sw-live-' + k, v) };
+  let usb = null;          // { port, reader, writer }
+  let remote = null;       // { db, auth, node, liveRef, evRef }
+  let lastMsgAt = 0, warnedFw = false;
+
+  /* ---------- 경보음 ---------- */
+  const alarm = {
+    ctx: null, siren: null, beepT: null, titleT: null, mode: 'normal', baseTitle: document.title,
+    unlock(){
+      try{
+        if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+      }catch(e){}
+      liveUi();
+    },
+    ready(){ return this.ctx && this.ctx.state === 'running'; },
+    beep(freq, dur, vol){
+      if (!this.ready() || LS.get('mute')) return;
+      const c = this.ctx, o = c.createOscillator(), g = c.createGain();
+      o.type = 'sine'; o.frequency.value = freq;
+      g.gain.setValueAtTime(0.0001, c.currentTime);
+      g.gain.exponentialRampToValueAtTime(vol || 0.25, c.currentTime + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + dur);
+      o.connect(g).connect(c.destination); o.start(); o.stop(c.currentTime + dur + 0.05);
+    },
+    startSiren(){
+      if (this.siren || !this.ready() || LS.get('mute')) return;
+      const c = this.ctx, o = c.createOscillator(), lfo = c.createOscillator(), lg = c.createGain(), g = c.createGain();
+      o.type = 'sawtooth'; o.frequency.value = 900;
+      lfo.type = 'triangle'; lfo.frequency.value = 0.9; lg.gain.value = 380;
+      lfo.connect(lg).connect(o.frequency);
+      g.gain.value = 0.18;
+      o.connect(g).connect(c.destination); o.start(); lfo.start();
+      this.siren = { o, lfo, g };
+    },
+    stopSiren(){
+      if (!this.siren) return;
+      try{ this.siren.o.stop(); this.siren.lfo.stop(); }catch(e){}
+      this.siren = null;
+    },
+    set(mode){
+      if (mode === this.mode) return;
+      this.mode = mode;
+      clearInterval(this.beepT); this.beepT = null;
+      clearInterval(this.titleT); this.titleT = null; document.title = this.baseTitle;
+      this.stopSiren();
+      if (mode === 'grace'){
+        this.beep(880, 0.25);
+        this.beepT = setInterval(() => this.beep(880, 0.18, 0.18), 1000);
+        notify('[낙상 의심] 유예 시작', `${P.name} 님 · ${C.grace}초 동안 반응을 확인합니다.`, false);
+      }
+      if (mode === 'emergency'){
+        this.startSiren();
+        let on = false;
+        this.titleT = setInterval(() => { on = !on; document.title = on ? '🚨 긴급 낙상 확정' : this.baseTitle; }, 700);
+        if (navigator.vibrate) try{ navigator.vibrate([600,250,600,250,600,250,600]); }catch(e){}
+        notify('🚨 [긴급] 낙상 확정', `${P.name} 님이 ${C.grace}초 동안 반응이 없습니다. 즉시 확인하세요.`, true);
+      }
+    }
+  };
+  function notify(title, body, urgent){
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    if (!urgent && document.visibilityState === 'visible') return;
+    try{ const n = new Notification(title, { body, tag: 'safewave', renotify: true, requireInteraction: !!urgent }); n.onclick = () => { window.focus(); n.close(); }; }catch(e){}
+  }
+  document.addEventListener('pointerdown', () => alarm.unlock(), { capture: true });
+  document.addEventListener('keydown', () => alarm.unlock(), { capture: true });
+
+  /* ---------- 장치 → 대시보드 ---------- */
+  function applyLive(st, info){
+    info = info || {};
+    LIVE.present = info.present !== undefined ? !!info.present : LIVE.present;
+    if (st === 'normal' || st === 'empty'){
+      if (S.mode !== 'normal') toNormal(info.msg || (S.mode === 'grace' ? '[레이더] 유예 중 기립 확인 · 오탐지 자동 해제' : '[레이더] 정상 복귀'));
+      else render();
+    } else if (st === 'grace'){
+      if (S.mode === 'normal') toGrace();
+      if (info.graceLeft != null) S.graceLeft = Math.max(0, +info.graceLeft);
+    } else if (st === 'emergency'){
+      if (S.mode !== 'emergency') toEmergency(false);
+    }
+  }
+  function onLine(line){
+    line = line.trim();
+    if (!line) return;
+    if (line[0] !== '{'){
+      if (!warnedFw && /\[[DIWE]\]|esphome|sensor:/i.test(line)){
+        warnedFw = true;
+        log('[USB] 보드에 SafeWave 펌웨어가 아니라 기본(ESPHome) 펌웨어가 들어 있습니다. SafeWave_Node.ino를 업로드하세요.', 'sys');
+      }
+      return;
+    }
+    let m; try{ m = JSON.parse(line); }catch(e){ return; }
+    lastMsgAt = Date.now();
+    if (m.type === 'state'){
+      LIVE.info = m;
+      if (m.grace && +m.grace !== C.grace){ C.grace = +m.grace; applySettings(); }
+      applyLive(m.state, m);
+      liveUi();
+    } else if (m.type === 'event'){
+      const cls = { grace:'wn', emergency:'cr', response:'ok', ack:'ok', clear:'ok', test:'sys', boot:'sys', enter:'ok', leave:'sys' }[m.tag] || 'sys';
+      log('[레이더] ' + m.msg, cls);
+    } else if (m.type === 'radar'){
+      log(`[레이더] 설정 적용 · 설치 높이 ${m.height ? '✓' : '✗'} · 낙상 임계 ${m.threshold ? '✓' : '✗'} · 민감도 ${m.sensitivity ? '✓' : '✗'}`, 'sys');
+    } else if (m.type === 'report'){
+      log(`[서버] ${m.state} 보고 · HTTP ${m.http}`, m.http === 200 ? 'sys' : 'wn');
+    }
+  }
+
+  /* ---------- USB (Web Serial) ---------- */
+  async function connectUsb(){
+    alarm.unlock(); askNotify();
+    if (!('serial' in navigator)){ alert('이 브라우저는 USB 시리얼을 지원하지 않습니다. PC의 크롬 또는 엣지로 열어 주세요.'); return; }
+    if (usb){ await disconnectUsb(); return; }
+    // 다른 페이지 안(iframe)에 들어 있어서 USB 권한이 막힌 경우 → 이 페이지만 새 창으로 열기
+    const fp = document.featurePolicy || document.permissionsPolicy;
+    if (window.top !== window && fp && fp.allowsFeature && !fp.allowsFeature('serial')){
+      log('[USB] 이 화면에서는 USB 권한이 막혀 있어 대시보드를 새 창으로 엽니다. 새 창에서 다시 [USB 레이더 연결]을 누르세요.', 'sys');
+      window.open(location.href, '_blank');
+      return;
+    }
+    let port;
+    try{ port = await navigator.serial.requestPort(); }
+    catch(e){
+      if (e && e.name === 'SecurityError' && window.top !== window){ window.open(location.href, '_blank'); return; }
+      if (e && e.name !== 'NotFoundError') log('[USB] 연결 창을 열 수 없습니다: ' + e.message, 'wn');
+      return;   // NotFoundError = 사용자가 취소
+    }
+    try{ await port.open({ baudRate: 115200 }); }
+    catch(e){ alert('포트를 열 수 없습니다. 아두이노 IDE의 시리얼 모니터가 COM 포트를 쓰고 있으면 닫고 다시 눌러 주세요.\n\n' + e.message); return; }
+    try{ await port.setSignals({ dataTerminalReady: true, requestToSend: false }); }catch(e){}
+    usb = { port, reader: null, writer: port.writable.getWriter() };
+    LIVE.src = 'usb'; warnedFw = false; lastMsgAt = Date.now();
+    log('[USB] 레이더 노드 연결됨', 'sys'); liveUi();
+    setTimeout(() => sendUsb('INFO'), 400);
+    const dec = new TextDecoder();
+    let buf = '';
+    try{
+      while (usb && port.readable){
+        usb.reader = port.readable.getReader();
+        try{
+          for (;;){
+            const { value, done } = await usb.reader.read();
+            if (done) break;
+            buf += dec.decode(value, { stream: true });
+            let i;
+            while ((i = buf.indexOf('\n')) >= 0){ onLine(buf.slice(0, i)); buf = buf.slice(i + 1); }
+            if (buf.length > 4096) buf = '';
+          }
+        } finally { try{ usb && usb.reader && usb.reader.releaseLock(); }catch(e){} }
+      }
+    }catch(e){ /* 케이블 분리 등 */ }
+    if (usb){ log('[USB] 레이더 노드 연결이 끊어졌습니다', 'wn'); await disconnectUsb(true); }
+  }
+  async function disconnectUsb(lost){
+    const u = usb; usb = null;
+    if (!u) return;
+    try{ u.reader && await u.reader.cancel(); }catch(e){}
+    try{ u.writer.releaseLock(); }catch(e){}
+    try{ await u.port.close(); }catch(e){}
+    if (LIVE.src === 'usb') LIVE.src = null;
+    if (!lost) log('[USB] 연결 해제', 'sys');
+    LIVE.info = null; LIVE.present = undefined;
+    liveUi(); render();
+  }
+  async function sendUsb(cmd){
+    if (!usb) return false;
+    try{ await usb.writer.write(new TextEncoder().encode(cmd + '\n')); return true; }catch(e){ return false; }
+  }
+  if ('serial' in navigator) navigator.serial.addEventListener('disconnect', e => { if (usb && e.target === usb.port){ log('[USB] 보드가 뽑혔습니다', 'wn'); disconnectUsb(true); } });
+
+  /* ---------- 원격 (Firebase 실시간 DB · 누가 열어도 자동 연결) ---------- */
+  const FB = { url: 'https://y-csts-default-rtdb.asia-southeast1.firebasedatabase.app', key: 'sw012b30e61a4cb665482a', node: 'daegu-102-1' };
+  const fbPath = p => `${FB.url}/safewave/${FB.key}${p}.json`;
+  let lastUp = null, lastUpAt = 0;
+  function connectRemote(){
+    if (remote) return;
+    const es = new EventSource(fbPath(`/nodes/${FB.node}`));
+    const ev = new EventSource(fbPath('/events') + '?orderBy=%22$key%22&limitToLast=1');
+    remote = { es, ev, node: FB.node, first: true };
+    let node = null;
+    const onNode = e => {
+      let m; try{ m = JSON.parse(e.data); }catch(_){ return; }
+      if (m.path === '/') node = m.data;
+      else if (node){ const k = m.path.replace(/^\//,''); if (e.type === 'patch') Object.assign(node, m.data); else node[k] = m.data; }
+      if (!node) return;
+      if (node.up !== lastUp){ lastUpAt = lastUp === null ? 0 : Date.now(); lastUp = node.up; }   // 첫 값은 오래된 것일 수 있어 다음 갱신부터 실시간으로 봄
+      if (LIVE.src === 'usb') return;            // USB 연결 중엔 USB 값이 우선
+      if (Date.now() - lastUpAt > 8000) return;  // 오래된 값은 무시 (보드 꺼짐)
+      if (LIVE.src !== 'remote'){ LIVE.src = 'remote'; log('[원격] 레이더 노드 실시간 수신 시작 (Firebase)', 'sys'); }
+      lastMsgAt = Date.now();
+      LIVE.info = node;
+      if (node.grace && +node.grace !== C.grace){ C.grace = +node.grace; applySettings(); }
+      applyLive(node.state, node);
+      liveUi();
+    };
+    es.addEventListener('put', onNode); es.addEventListener('patch', onNode);
+    ev.addEventListener('put', e => {
+      let m; try{ m = JSON.parse(e.data); }catch(_){ return; }
+      if (remote && remote.first){ remote.first = false; return; }      // 접속 직후의 지난 이벤트는 건너뜀
+      const d = m.path === '/' ? null : m.data;
+      if (!d || !d.msg || LIVE.src === 'usb') return;
+      const cls = { grace:'wn', emergency:'cr', response:'ok', ack:'ok', clear:'ok', enter:'ok' }[d.tag] || 'sys';
+      log('[레이더] ' + d.msg, cls);
+    });
+    liveUi();
+  }
+  function disconnectRemote(){
+    if (!remote) return;
+    try{ remote.es.close(); remote.ev.close(); }catch(e){}
+    remote = null;
+    if (LIVE.src === 'remote'){ LIVE.src = null; LIVE.info = null; LIVE.present = undefined; log('[원격] 수신 중지', 'sys'); }
+    liveUi(); render();
+  }
+  async function remoteCmd(cmd){
+    try{
+      const r = await fetch(fbPath(`/cmd/${FB.node}`), { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(cmd) });
+      log(`[원격] ${cmd === 'ACK' ? '보호자 확인' : '낙상 테스트'} 명령 전송${r.ok ? '' : ' 실패 · HTTP ' + r.status}`, r.ok ? 'sys' : 'wn');
+      return r.ok;
+    }catch(e){ log('[원격] 명령 전송 실패: ' + e.message, 'wn'); return false; }
+  }
+  const remoteAck = () => remoteCmd('ACK');
+  // 원격 값이 끊기면(보드 꺼짐·Wi-Fi 끊김) 표시를 미연결로 되돌림
+  setInterval(() => {
+    if (LIVE.src === 'remote' && Date.now() - lastUpAt > 10000){
+      LIVE.src = null; LIVE.info = null; LIVE.present = undefined;
+      log('[원격] 레이더 노드 응답 없음 (보드 전원·Wi-Fi 확인)', 'wn');
+      if (S.mode !== 'normal') toNormal('[원격] 연결 끊김으로 표시 초기화');
+      liveUi(); render();
+    }
+  }, 2000);
+
+  /* ---------- 공통 ---------- */
+  function askNotify(){ if ('Notification' in window && Notification.permission === 'default') try{ Notification.requestPermission(); }catch(e){} }
+  function onAck(){
+    alarm.set('normal');
+    if (LIVE.src === 'usb') sendUsb('ACK');
+    if (LIVE.src === 'remote') remoteAck();
+  }
+  $('mAck').addEventListener('click', onAck);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && S.mode !== 'normal') onAck(); });
+
+  function liveUi(){
+    const src = LIVE.src, i = LIVE.info || {};
+    const stale = src && Date.now() - lastMsgAt > 5000;
+    $('lvDot').className = 'lvdot ' + (src ? (stale ? 'stale' : 'on') : '');
+    $('lvTx').textContent = src === 'usb' ? (stale ? 'USB 레이더 · 응답 없음' : 'USB 레이더 실시간 연결')
+      : src === 'remote' ? (stale ? '원격 · 응답 없음' : `원격 실시간 연결 · 노드 ${FB.node}`) : remote ? '레이더 신호 기다리는 중 (Firebase 대기)' : REAL ? '레이더 미연결 · 실측값만 표시' : '레이더 미연결 · 시뮬레이션 모드';
+    const bits = [];
+    if (src && LIVE.info){
+      bits.push(i.present ? '재실 감지' : '사람 없음');
+      bits.push(i.fall ? '낙상 신호 ON' : '낙상 신호 없음');
+      if (i.lux >= 0) bits.push(`조도 ${Math.round(i.lux)} lx`);
+      bits.push(`설치 ${(+i.height).toFixed(1)}m · 임계 ${(+i.th).toFixed(2)}m`);
+      if (src === 'usb') bits.push(i.wifi ? 'Wi-Fi 연결 (원격 공유 중)' : 'Wi-Fi 없음 (이 PC에서만 보임)');
+      if (i.sim) bits.push('TEST 진행 중');
+    }
+    $('lvSub').textContent = src ? bits.join(' · ') || '데이터 기다리는 중…' : '보드가 Wi-Fi에 연결되면 자동으로 표시됩니다. 보드를 꽂은 PC에서는 [USB 레이더 연결]도 쓸 수 있습니다.';
+    $('lvUsb').textContent = src === 'usb' ? 'USB 연결 해제' : 'USB 레이더 연결';
+    $('lvUsb').setAttribute('aria-pressed', String(src === 'usb'));
+    $('lvRm').textContent = remote ? '원격 수신 끄기' : '원격 수신 켜기';
+    $('lvTest').disabled = S.mode !== 'normal' || (REAL && !src);
+    $('lvTest').title = REAL && !src ? '레이더를 먼저 연결하세요' : '';
+    $('lvSnd').textContent = LS.get('mute') ? '🔇 경보음 꺼짐' : alarm.ready() ? '🔔 경보음 켜짐' : '🔔 경보음 켜기';
+    $('lvSnd').classList.toggle('need', !LS.get('mute') && !alarm.ready());
+    $('simLbl').textContent = src ? '실시간 레이더 연결 중 (수동 조작 잠금)' : '시뮬레이션 모드 제어';
+    if (src) ['bN','bG','bF','bR'].forEach(id => { $(id).disabled = true; });
+    else { $('bN').disabled = false; $('bF').disabled = false; $('bG').disabled = S.mode !== 'normal'; $('bR').disabled = S.mode === 'normal' && !S.rest; }
+    $('sysComm').textContent = src === 'usb' ? 'USB 시리얼 · 실시간 (SafeWave_Node 펌웨어)' : src === 'remote' ? 'Wi-Fi → Firebase 실시간 DB' : REAL ? '레이더 미연결' : 'Wi-Fi · 시뮬레이션 모드';
+    if (src || REAL) $('hint').textContent = REAL ? '실측값만 표시 · 위치·높이·호흡은 MR60FDA2 미제공' : '위치·높이·호흡은 시뮬레이션 (MR60FDA2는 재실·낙상만 제공)';
+  }
+  // render() 가 끝날 때마다 실시간 표시·경보를 맞춘다
+  const _render = render;
+  render = function(){
+    _render();
+    if (LIVE.src && S.mode === 'normal' && LIVE.present === false && !S.rest){
+      $('presence').textContent = '○ 부재 · 감지 구역에 사람 없음';
+    }
+    alarm.set(S.mode);
+    if (typeof liveUi === 'function' && $('lvDot')) liveUi();
+  };
+
+  $('lvUsb').onclick = connectUsb;
+  $('lvRm').onclick = () => { alarm.unlock(); askNotify(); remote ? disconnectRemote() : connectRemote(); };
+  $('lvTest').onclick = async () => {
+    alarm.unlock(); askNotify();
+    if (LIVE.src === 'usb'){ if (await sendUsb('TEST')) log('[USB] 낙상 테스트 명령 전송 (보드가 유예 → 긴급까지 진행)', 'sys'); }
+    else if (LIVE.src === 'remote') remoteCmd('TEST');
+    else if (!REAL) toGrace();
+  };
+  $('lvSnd').onclick = () => {
+    if (alarm.ready() && !LS.get('mute')){ LS.set('mute', true); alarm.stopSiren(); }
+    else { LS.set('mute', false); alarm.unlock(); alarm.beep(880, 0.2); if (S.mode === 'emergency'){ alarm.mode = ''; alarm.set('emergency'); } }
+    liveUi();
+  };
+  setInterval(liveUi, 1000);
+  liveUi();
+  if (REAL) connectRemote();   // 페이지를 열면 자동으로 실시간 수신 시작
+})();
+</script>
+</body>
+</html>
