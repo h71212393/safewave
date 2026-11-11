@@ -155,7 +155,10 @@ button:focus-visible,canvas:focus-visible{outline:2px solid var(--teal);outline-
 .vit small{font-size:11px;color:var(--mu)}
 .chart{border-radius:12px;overflow:hidden;border:1px solid var(--bd2);background:#020617}
 .chart canvas{display:block;width:100%;height:220px}
-.ckey{display:flex;gap:16px;margin-top:10px;font-size:12px;color:var(--tx2)}
+.ckey{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin-top:10px;font-size:12px;color:var(--tx2)}
+.ckey .zr{margin-left:auto}
+.ckey .zr button{padding:3px 10px;min-height:28px;font-size:12px}
+html:not(.real) .ckey .zr{display:none}
 .ckey span{display:flex;align-items:center;gap:6px}
 .ckey i{width:18px;height:3px;border-radius:2px}
 
@@ -573,7 +576,8 @@ button:focus-visible,canvas:focus-visible{outline:2px solid var(--teal);outline-
           </div>
         </div>
         <div class="chart"><canvas id="chart" role="img" aria-label="Z 높이와 호흡수 그래프"></canvas></div>
-        <div class="ckey"><span><i style="background:#2DD4BF;box-shadow:0 0 6px #2DD4BF"></i>높이 Z축 (m)</span><span><i style="background:#818CF8;box-shadow:0 0 6px #818CF8"></i>호흡 파형 (bpm)</span><span><i style="background:#F43F5E"></i>낙상 임계 <span id="thKey">0.5</span>m</span></div>
+        <div class="ckey"><span><i style="background:#2DD4BF;box-shadow:0 0 6px #2DD4BF"></i>높이 Z축 (m)</span><span><i style="background:#818CF8;box-shadow:0 0 6px #818CF8"></i>호흡 파형 (bpm)</span><span><i style="background:#F43F5E"></i>낙상 임계 <span id="thKey">0.5</span>m</span>
+          <div class="seg zr" role="group" aria-label="그래프 기간"><button type="button" data-r="60" aria-pressed="true">1분</button><button type="button" data-r="3600" aria-pressed="false">1시간</button><button type="button" data-r="86400" aria-pressed="false">24시간</button></div></div>
       </section>
 
       <div class="duo">
@@ -870,8 +874,24 @@ button:focus-visible,canvas:focus-visible{outline:2px solid var(--teal);outline-
   const posLive = () => !!(LIVE.src && LIVE.pos && Date.now() - LIVE.pos.at < 2500);   // 레이더가 보낸 실측 위치가 있는지
   const seen = () => !REAL || posLive() || (LIVE.src && (LIVE.present || S.mode !== 'normal'));   // 대상자 점을 그릴지
   // 레이더 좌표(레이더 바로 아래가 0,0 · m) → 방 좌표. 방향이 반대로 보이면 장치 설정에서 축 뒤집기
-  const zLive = () => !!(LIVE.src && LIVE.z && Date.now() - LIVE.z.at < 3000);   // 레이더가 보낸 실측 높이(Z)
+  // 레이더가 보낸 실측 높이(Z). 원격(Firebase)은 몇 초 간격으로 오므로 8초까지는 마지막 값을 이어서 씀 (그래프가 끊기지 않게)
+  const zLive = () => !!(LIVE.src && LIVE.z && Date.now() - LIVE.z.at < 8000);
   const zHist = [];   // 실측 Z 기록 (최근 60초, 0.5초 간격)
+  // 보드가 Firebase zhist/<노드>/<유닉스초> 에 10초마다 남긴 높이 기록 (24시간 보관)
+  const ZH = { range: [60, 3600, 86400].includes(+store.get('sw-zrange')) ? +store.get('sw-zrange') : 60, map: {}, arr: [], dirty: false };
+  function zhPoints(range){
+    if (ZH.dirty){ ZH.dirty = false; ZH.arr = Object.keys(ZH.map).map(k => [+k, +ZH.map[k]]).filter(p => isFinite(p[0]) && isFinite(p[1])).sort((a,b) => a[0]-b[0]); }
+    const from = Date.now()/1000 - range;
+    return ZH.arr.filter(p => p[0] >= from);
+  }
+  function zhSetRange(r){
+    ZH.range = r; store.set('sw-zrange', r); chartDone = false;
+    document.querySelectorAll('.zr button').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.r === r)));
+  }
+  document.querySelectorAll('.zr button').forEach(b => {
+    b.setAttribute('aria-pressed', String(+b.dataset.r === ZH.range));
+    b.addEventListener('click', () => zhSetRange(+b.dataset.r));
+  });
   function setPos(i){
     if (i == null) return;
     if (i.pz != null && isFinite(+i.pz)) LIVE.z = { v: Math.max(0, Math.min(2.5, +i.pz)), at: Date.now() };
@@ -1320,13 +1340,14 @@ button:focus-visible,canvas:focus-visible{outline:2px solid var(--teal);outline-
   function drawChart(){
     const W = chart.width, H = chart.height, d = DPR(), ctx = cx;
     if (!W || !H) return;
-    if (REAL && !zHist.some(v => v != null)){
+    const zr = REAL ? ZH.range : 60, zpts = zr > 60 ? zhPoints(zr) : null;   // 1시간·24시간 보기는 저장된 기록으로
+    if (REAL && (zpts ? !zpts.length : !zHist.some(v => v != null))){
       ctx.fillStyle = '#020617'; ctx.fillRect(0,0,W,H);
       ctx.fillStyle = '#94A3B8'; ctx.textAlign = 'center';
       ctx.font = `600 ${13*d}px "Noto Sans KR",sans-serif`;
-      ctx.fillText('실측 높이(Z) 신호를 기다리는 중', W/2, H/2 - 8*d);
+      ctx.fillText(zpts ? '저장된 높이 기록이 아직 없습니다' : '실측 높이(Z) 신호를 기다리는 중', W/2, H/2 - 8*d);
       ctx.font = `${11*d}px "Noto Sans KR",sans-serif`;
-      ctx.fillText('레이더 앞에 사람이 있으면 Z 높이 그래프가 그려집니다 · 호흡수는 MR60FDA2 미제공', W/2, H/2 + 14*d);
+      ctx.fillText(zpts ? '보드가 10초마다 높이를 기록합니다 · 최근 24시간 보관' : '레이더 앞에 사람이 있으면 Z 높이 그래프가 그려집니다 · 호흡수는 MR60FDA2 미제공', W/2, H/2 + 14*d);
       ctx.textAlign = 'start'; chartDone = true; return;
     }
     const bg = ctx.createLinearGradient(0,0,0,H); bg.addColorStop(0,'#071225'); bg.addColorStop(1,'#020617');
@@ -1344,7 +1365,22 @@ button:focus-visible,canvas:focus-visible{outline:2px solid var(--teal);outline-
     ctx.strokeStyle = 'rgba(244,63,94,.85)'; ctx.lineWidth = 1.3*d; ctx.setLineDash([6*d,5*d]); ctx.beginPath(); ctx.moveTo(l,ty); ctx.lineTo(l+w,ty); ctx.stroke(); ctx.setLineDash([]);
     ctx.fillStyle = '#FDA4AF'; ctx.textAlign = 'left'; ctx.font = `700 ${10.5*d}px "Noto Sans KR",sans-serif`; ctx.fillText(`낙상 임계 ${C.th}m`, l + 8*d, ty - 6*d);
     ctx.fillStyle = '#94A3B8'; ctx.font = `600 ${10*d}px "JetBrains Mono",monospace`; ctx.textAlign = 'center';
-    ctx.fillText('-60s', l + 12*d, H - 7*d); ctx.fillText('-30s', l + w/2, H - 7*d); ctx.fillText('NOW', l + w - 12*d, H - 7*d); ctx.textAlign = 'left';
+    const lab = zr === 86400 ? ['-24h','-12h'] : zr === 3600 ? ['-60m','-30m'] : ['-60s','-30s'];
+    ctx.fillText(lab[0], l + 14*d, H - 7*d); ctx.fillText(lab[1], l + w/2, H - 7*d); ctx.fillText('NOW', l + w - 12*d, H - 7*d); ctx.textAlign = 'left';
+    if (zpts){   // 저장된 기록 (10초 간격). 30초 넘게 빈 곳은 기록이 없던 시간이라 끊어서 그림
+      const now = Date.now()/1000, X = s => l + Math.max(0, Math.min(1, (s - (now - zr))/zr))*w, Y = v => t + h - Math.max(0, Math.min(1, v/2.5))*h;
+      ctx.strokeStyle = '#5EEAD4'; ctx.lineWidth = (zr === 86400 ? 1.6 : 2.2)*d; ctx.shadowColor = COL.teal; ctx.shadowBlur = 6*d; ctx.beginPath();
+      let prev = null;
+      zpts.forEach(([s,v]) => { prev != null && s - prev <= 30 ? ctx.lineTo(X(s), Y(v)) : ctx.moveTo(X(s), Y(v)); prev = s; });
+      ctx.stroke(); ctx.shadowBlur = 0;
+      zpts.forEach(([s,v], i) => {   // 앞뒤로 이어지지 않은 외딴 점은 점으로 표시
+        const a = zpts[i-1], b2 = zpts[i+1];
+        if ((!a || s - a[0] > 30) && (!b2 || b2[0] - s > 30)){ ctx.fillStyle = '#5EEAD4'; ctx.beginPath(); ctx.arc(X(s), Y(v), 1.8*d, 0, Math.PI*2); ctx.fill(); }
+      });
+      const lp = zpts[zpts.length-1];
+      if (now - lp[0] < 30){ ctx.fillStyle = '#5EEAD4'; ctx.beginPath(); ctx.arc(X(lp[0]), Y(lp[1]), 3.5*d, 0, Math.PI*2); ctx.fill(); }
+      chartDone = true; return;
+    }
     if (REAL){   // 실측 Z 만 그림 (빈 구간은 끊어서)
       const N = 120, X = i => l + (i + N - zHist.length)/(N-1)*w, Y = v => t + h - Math.max(0, Math.min(1, v/2.5))*h;
       ctx.strokeStyle = '#5EEAD4'; ctx.lineWidth = 2.6*d; ctx.shadowColor = COL.teal; ctx.shadowBlur = 8*d; ctx.beginPath();
@@ -1397,7 +1433,7 @@ button:focus-visible,canvas:focus-visible{outline:2px solid var(--teal);outline-
     }
     sT += dt;
     if (REAL && sT >= 0.5){ sT = 0; chartDone = false;
-      zHist.push(zLive() ? LIVE.z.v : null); if (zHist.length > 120) zHist.shift();
+      zHist.push(zLive() ? S.z : null); if (zHist.length > 120) zHist.shift();   // 부드럽게 따라간 값으로 그림
     }
     if (sT >= 0.5 && !REAL){ sT = 0;
       hist.z.push(S.z + (Math.random()-.5)*0.02); hist.z.shift();
@@ -1412,7 +1448,7 @@ button:focus-visible,canvas:focus-visible{outline:2px solid var(--teal);outline-
         if (REAL){
           const pl = posLive(), hz = zLive();
           $('cx').textContent = pl ? LIVE.pos.rx.toFixed(2)+'m' : '—'; $('cy').textContent = pl ? LIVE.pos.ry.toFixed(2)+'m' : '—';
-          $('cz').textContent = hz ? LIVE.z.v.toFixed(2)+'m' : '—'; $('vz').textContent = hz ? LIVE.z.v.toFixed(2) : '—'; $('vb').textContent = '—';
+          $('cz').textContent = hz ? S.z.toFixed(2)+'m' : '—'; $('vz').textContent = hz ? S.z.toFixed(2) : '—'; $('vb').textContent = '—';
           $('cx').classList.toggle('nodata', !pl); $('cy').classList.toggle('nodata', !pl); $('cz').classList.toggle('nodata', !hz);
           $('vz').classList.toggle('nodata', !hz); $('vb').classList.add('nodata');
         } else {
@@ -1866,7 +1902,16 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
     if (remote) return;
     const es = new EventSource(fbPath(`/nodes/${FB.node}`));
     const ev = new EventSource(fbPath('/events') + '?orderBy=%22$key%22&limitToLast=1');
-    remote = { es, ev, node: FB.node, first: true };
+    // 높이 기록: 최근 24시간을 받아 두고, 보드가 새로 쓰거나 지우는 것도 실시간 반영
+    const zh = new EventSource(fbPath(`/zhist/${FB.node}`) + '?orderBy=%22$key%22&startAt=%22' + Math.floor(Date.now()/1000 - 86400) + '%22');
+    const onZh = e => {
+      let m; try{ m = JSON.parse(e.data); }catch(_){ return; }
+      if (m.path === '/'){ if (e.type === 'put') ZH.map = {}; Object.assign(ZH.map, m.data || {}); Object.keys(ZH.map).forEach(k => { if (ZH.map[k] == null) delete ZH.map[k]; }); }
+      else { const k = m.path.replace(/^\//,''); if (m.data == null) delete ZH.map[k]; else ZH.map[k] = m.data; }
+      ZH.dirty = true; chartDone = false;
+    };
+    zh.addEventListener('put', onZh); zh.addEventListener('patch', onZh);
+    remote = { es, ev, zh, node: FB.node, first: true };
     let node = null;
     const onNode = e => {
       let m; try{ m = JSON.parse(e.data); }catch(_){ return; }
@@ -1896,7 +1941,7 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
   }
   function disconnectRemote(){
     if (!remote) return;
-    try{ remote.es.close(); remote.ev.close(); }catch(e){}
+    try{ remote.es.close(); remote.ev.close(); remote.zh.close(); }catch(e){}
     remote = null;
     if (LIVE.src === 'remote'){ LIVE.src = null; LIVE.info = null; LIVE.present = undefined; log('[원격] 수신 중지', 'sys'); }
     liveUi(); render();
