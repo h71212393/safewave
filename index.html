@@ -456,9 +456,91 @@ html:not(.real) .ckey .zr{display:none}
 .modal,.dlg{backdrop-filter:none;-webkit-backdrop-filter:none}
 .real .simctl{display:none}
 .nodata{color:var(--mu)!important;text-shadow:none!important}
+
+/* ---------- 로그인 · 권한 ---------- */
+html:not(.authed) body > :not(.auth){visibility:hidden}
+html.authed .auth{display:none}
+html:not(.role-admin) .adm-only{display:none!important}
+.auth [hidden]{display:none!important}
+html:not(.role-admin) #view-profile :is(input,select,textarea,button){pointer-events:none}   /* 보호자는 대상자 정보 보기만 */
+html:not(.role-admin) #view-profile :is(input,select,textarea){border-color:transparent;background:rgba(2,6,23,.45)}
+.auth{position:fixed;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;padding:20px;overflow:auto;
+  background:radial-gradient(900px 500px at 20% -10%,rgba(45,212,191,.16),transparent 60%),radial-gradient(800px 500px at 110% 110%,rgba(129,140,248,.14),transparent 60%),#020617}
+.auth .box{width:100%;max-width:400px;border-radius:18px;padding:26px 24px;background:rgba(10,18,36,.96);border:1px solid rgba(45,212,191,.4);box-shadow:0 30px 60px -20px rgba(0,0,0,.8),0 0 40px -18px rgba(45,212,191,.6)}
+.auth .ah{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.auth .ah .logo{flex-shrink:0}
+.auth .ah h2{margin:0;font-size:18px;font-weight:800;color:#fff}
+.auth .ah p{margin:2px 0 0;font-size:12.5px;color:var(--mu)}
+.auth .atabs{display:flex;padding:3px;border-radius:11px;background:var(--inset);border:1px solid var(--bd2);margin-bottom:16px}
+.auth .atabs button{flex:1;border:0;background:transparent;border-radius:8px;min-height:38px;font-weight:800;font-size:14px;color:var(--mu)}
+.auth .atabs button[aria-selected="true"]{background:rgba(45,212,191,.2);color:#5EEAD4;box-shadow:0 0 0 1px rgba(45,212,191,.5) inset}
+.auth form{display:flex;flex-direction:column;gap:12px}
+.auth .primary{width:100%;margin-top:4px}
+.auth .primary:disabled{opacity:.6;cursor:wait}
+.auth .link{align-self:center;border:0;background:transparent;color:var(--mu);font-size:12.5px;text-decoration:underline;min-height:32px}
+.auth .link:hover{color:#5EEAD4}
+.auth .aerr{min-height:20px;margin:12px 0 0;font-size:13px;color:#FDA4AF;text-align:center}
+.auth .aerr.ok{color:#6EE7B7}
+.auth .wait{text-align:center;color:var(--tx2);font-size:14px;line-height:1.7}
+.auth .wait b{color:#fff}
+.auth .wait .big{font-size:34px;line-height:1;margin-bottom:10px}
+.auth .wait .row{display:flex;gap:8px;justify-content:center;margin-top:18px}
+.chip.user{gap:10px;padding:5px 6px 5px 12px}
+.chip.user .rb{font-size:11px;font-weight:800;padding:2px 8px;border-radius:99px;background:rgba(148,163,184,.18);color:var(--tx2)}
+.chip.user .rb.adm{background:rgba(45,212,191,.2);color:#5EEAD4}
+.chip.user button{border:1px solid var(--bd2);background:transparent;color:var(--tx2);font-size:12px;font-weight:700;border-radius:8px;padding:4px 10px;min-height:30px}
+.chip.user button:hover{border-color:#FB7185;color:#FDA4AF}
+.utable{width:100%;border-collapse:collapse;font-size:13.5px}
+.utable th{text-align:left;font-size:12px;color:var(--mu);font-weight:700;padding:8px 10px;border-bottom:1px solid var(--bd2)}
+.utable td{padding:10px;border-bottom:1px solid var(--bd);vertical-align:middle}
+.utable td.acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.utable .ghost{min-height:32px;padding:4px 10px;font-size:12px}
+.utable .ghost.go{border-color:rgba(45,212,191,.5);color:#5EEAD4}
+.rtag{display:inline-block;font-size:11.5px;font-weight:800;padding:2px 9px;border-radius:99px}
+.rtag.pending{background:rgba(251,191,36,.16);color:#FCD34D}
+.rtag.member{background:rgba(148,163,184,.18);color:var(--tx2)}
+.rtag.admin{background:rgba(45,212,191,.2);color:#5EEAD4}
+.rtag.rejected{background:rgba(244,63,94,.16);color:#FDA4AF}
+@media (max-width:760px){.utable thead{display:none}.utable tr{display:block;padding:8px 0;border-bottom:1px solid var(--bd)}.utable td{display:block;border:0;padding:4px 2px}.utable td.acts{justify-content:flex-start}}
 </style>
 </head>
 <body>
+
+<!-- ================= 로그인 ================= -->
+<div class="auth" id="auth">
+  <div class="box">
+    <div class="ah">
+      <div class="logo" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="19" r="1.7" fill="currentColor"/><path d="M7.5 14.5a6.4 6.4 0 0 1 9 0"/><path d="M4.2 11a11 11 0 0 1 15.6 0"/></svg></div>
+      <div><h2>SafeWave 관제 로그인</h2><p>승인된 관리자와 보호자만 이용할 수 있습니다</p></div>
+    </div>
+    <div id="aForms">
+      <div class="atabs" role="tablist" aria-label="로그인 또는 회원가입">
+        <button type="button" role="tab" id="atLogin" aria-selected="true" aria-controls="fLogin">로그인</button>
+        <button type="button" role="tab" id="atJoin" aria-selected="false" aria-controls="fJoin">회원가입</button>
+      </div>
+      <form id="fLogin" novalidate>
+        <div class="f"><label for="lgEmail">이메일</label><input id="lgEmail" type="email" autocomplete="username" required></div>
+        <div class="f"><label for="lgPw">비밀번호</label><input id="lgPw" type="password" autocomplete="current-password" required></div>
+        <button type="submit" class="primary">로그인</button>
+        <button type="button" class="link" id="lgReset">비밀번호를 잊으셨나요?</button>
+      </form>
+      <form id="fJoin" novalidate hidden>
+        <div class="f"><label for="jnName">이름</label><input id="jnName" autocomplete="name" maxlength="20" required></div>
+        <div class="f"><label for="jnEmail">이메일</label><input id="jnEmail" type="email" autocomplete="email" required></div>
+        <div class="f"><label for="jnPw">비밀번호</label><input id="jnPw" type="password" autocomplete="new-password" minlength="6" required><span class="help">6자 이상</span></div>
+        <div class="f"><label for="jnPw2">비밀번호 확인</label><input id="jnPw2" type="password" autocomplete="new-password" required></div>
+        <button type="submit" class="primary">가입 신청</button>
+        <span class="f"><span class="help" style="text-align:center">가입 후 관리자가 승인하면 이용할 수 있습니다.</span></span>
+      </form>
+    </div>
+    <div class="wait" id="aWait" hidden>
+      <div class="big" aria-hidden="true">⏳</div>
+      <div id="aWaitTx"></div>
+      <div class="row"><button type="button" class="ghost" id="aRecheck">승인 다시 확인</button><button type="button" class="ghost" id="aOut2">로그아웃</button></div>
+    </div>
+    <p class="aerr" id="aErr" role="alert"></p>
+  </div>
+</div>
 
 <header class="hdr">
   <div class="hdr-in">
@@ -472,12 +554,14 @@ html:not(.real) .ckey .zr{display:none}
     <div class="chip"><span class="live" aria-hidden="true"></span><span>노드</span><strong>대구 102동 거실 #1</strong></div>
     <div class="chip clock" id="clock">----</div>
     <div class="pill normal" id="pill" role="status" aria-live="polite"><i></i><span id="pillTx">정상 NORMAL</span></div>
+    <div class="chip user"><strong id="uName">-</strong><span class="rb" id="uRole"></span><button type="button" id="uOut">로그아웃</button></div>
   </div>
   <nav class="nav" aria-label="주요 메뉴">
     <button type="button" data-go="live" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M12 12l6-6"/></svg>실시간 관제</button>
     <button type="button" data-go="log"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></svg>이벤트 로그 <span class="cnt" id="navCnt">0</span></button>
     <button type="button" data-go="profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>대상자 정보</button>
-    <button type="button" data-go="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>장치 설정</button>
+    <button type="button" data-go="settings" class="adm-only"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>장치 설정</button>
+    <button type="button" data-go="users" class="adm-only"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14.2a6.5 6.5 0 0 1 3.5 5.8"/></svg>회원 관리 <span class="cnt hot" id="uPend" hidden>0</span></button>
   </nav>
 </header>
 
@@ -488,9 +572,9 @@ html:not(.real) .ckey .zr{display:none}
   <section class="glass livebar" aria-label="실시간 레이더 연결">
     <div class="lvst"><span class="lvdot" id="lvDot" aria-hidden="true"></span><div style="min-width:0"><b id="lvTx" role="status" aria-live="polite">레이더 미연결 · 시뮬레이션 모드</b><small id="lvSub"></small></div></div>
     <div class="lvbtns">
-      <button type="button" class="lvb pri" id="lvUsb" aria-pressed="false">USB 레이더 연결</button>
+      <button type="button" class="lvb pri adm-only" id="lvUsb" aria-pressed="false">USB 레이더 연결</button>
       <button type="button" class="lvb" id="lvRm">원격 연결</button>
-      <button type="button" class="lvb wn" id="lvTest">낙상 테스트</button>
+      <button type="button" class="lvb wn adm-only" id="lvTest">낙상 테스트</button>
       <button type="button" class="lvb" id="lvSnd">🔔 경보음 켜기</button>
     </div>
   </section>
@@ -546,8 +630,8 @@ html:not(.real) .ckey .zr{display:none}
               <button type="button" id="v2d" aria-pressed="true">2D</button>
               <button type="button" id="v3d" aria-pressed="false">3D</button>
             </div>
-            <button type="button" class="zbtn rst" id="zReset" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"/></svg>구역 초기화</button>
-            <button type="button" class="zbtn" id="zEdit" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4"/></svg><span id="zEditTx">예외 구역 편집</span></button>
+            <button type="button" class="zbtn rst adm-only" id="zReset" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"/></svg>구역 초기화</button>
+            <button type="button" class="zbtn adm-only" id="zEdit" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4"/></svg><span id="zEditTx">예외 구역 편집</span></button>
           </div>
         </div>
         <div class="map" id="mapBox">
@@ -750,11 +834,11 @@ html:not(.real) .ckey .zr{display:none}
     </section>
     <section class="glass panel" aria-labelledby="hCe">
       <div class="ph"><div class="tt"><div class="ico" style="background:rgba(244,63,94,.16);color:#FB7185;border:1px solid rgba(251,113,133,.45)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8.1 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.8 2z"/></svg></div><div><h3 id="hCe">비상연락처</h3><p>위에서부터 1순위 · 최대 4명</p></div></div>
-        <button type="button" class="ghost" id="addCt" style="border-color:rgba(45,212,191,.5);color:#5EEAD4">+ 연락처 추가</button></div>
+        <button type="button" class="ghost adm-only" id="addCt" style="border-color:rgba(45,212,191,.5);color:#5EEAD4">+ 연락처 추가</button></div>
       <div id="cEdit"></div>
     </section>
   </div>
-  <div class="actions"><span class="saved" id="pfSaved">✓ 저장되었습니다</span><button type="button" class="ghost" id="pfReset">예시 데이터로 되돌리기</button><button type="button" class="primary" id="pfSave">저장</button></div>
+  <div class="actions adm-only"><span class="saved" id="pfSaved">✓ 저장되었습니다</span><button type="button" class="ghost" id="pfReset">예시 데이터로 되돌리기</button><button type="button" class="primary" id="pfSave">저장</button></div>
 </div>
 
 <!-- ================= 장치 설정 ================= -->
@@ -794,6 +878,22 @@ html:not(.real) .ckey .zr{display:none}
   <div class="actions"><span class="saved" id="stSaved">✓ 저장되었습니다</span><button type="button" class="ghost" id="stReset">기본값</button><button type="button" class="primary" id="stSave">저장</button></div>
 </div>
 
+<!-- ================= 회원 관리 (관리자) ================= -->
+<div class="view" id="view-users" hidden>
+  <div class="vtitle" style="margin-bottom:16px">
+    <div><h2>회원 관리</h2><p>가입 신청을 승인하거나 권한을 바꿉니다. 일반 회원은 실시간 화면 보기와 알람 확인만 할 수 있습니다.</p></div>
+    <button type="button" class="ghost" id="uReload">새로고침</button>
+  </div>
+  <section class="glass panel">
+    <div class="tscroll">
+      <table class="utable">
+        <thead><tr><th scope="col">이름</th><th scope="col">이메일</th><th scope="col">권한</th><th scope="col">가입일</th><th scope="col" style="text-align:right">관리</th></tr></thead>
+        <tbody id="uBody"><tr><td colspan="5" style="color:var(--mu)">불러오는 중…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
 </main>
 
 <footer class="foot"><span>SafeWave mmWave Radar Intelligent Care Solution © 2026</span><span>대구 102동 60GHz 노드 #1 · <span id="footAi">Claude AI</span></span></footer>
@@ -829,6 +929,220 @@ html:not(.real) .ckey .zr{display:none}
     <div class="row"><button type="button" class="ghost" id="zCancel">취소</button><button type="button" class="primary" id="zSave">저장</button></div>
   </div>
 </div>
+<script>
+/* =====================================================================
+   로그인 (Firebase 인증 · 이메일/비밀번호)
+   - 회원가입 → users/<uid> 에 role:"pending" 으로 등록 → 관리자가 승인하면 member
+   - role: admin(전체) / member(보기 + 알람 확인) / pending(승인 대기) / rejected(거절)
+   - 데이터 요청에는 로그인 토큰(auth)을 붙이고, Firebase 규칙이 권한을 검사
+   ===================================================================== */
+window.SWAuth = (function(){
+  'use strict';
+  const CFG = {
+    apiKey: 'AIzaSyCWj1AJbB3XdxIXqCVIDYDyK2XX8jXT0T8',   // Firebase 콘솔 › 프로젝트 설정 › 내 앱(safewave) › apiKey (공개되어도 되는 값)
+    db: 'https://y-csts-default-rtdb.asia-southeast1.firebasedatabase.app',
+    key: 'sw012b30e61a4cb665482a'
+  };
+  const $a = id => document.getElementById(id);
+  const root = document.documentElement;
+  const LSK = 'sw-auth';
+  let sess = null, me = null, joinName = '', refreshT = null, pendT = null;
+  let readyRes; const ready = new Promise(r => readyRes = r);
+  const onRefresh = [];
+
+  const ERR = {
+    EMAIL_EXISTS: '이미 가입된 이메일입니다. 로그인해 주세요.',
+    EMAIL_NOT_FOUND: '이메일 또는 비밀번호가 맞지 않습니다.',
+    INVALID_PASSWORD: '이메일 또는 비밀번호가 맞지 않습니다.',
+    INVALID_LOGIN_CREDENTIALS: '이메일 또는 비밀번호가 맞지 않습니다.',
+    USER_DISABLED: '사용이 중지된 계정입니다.',
+    TOO_MANY_ATTEMPTS_TRY_LATER: '시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.',
+    WEAK_PASSWORD: '비밀번호는 6자 이상이어야 합니다.',
+    INVALID_EMAIL: '이메일 형식이 올바르지 않습니다.',
+    MISSING_PASSWORD: '비밀번호를 입력해 주세요.',
+    OPERATION_NOT_ALLOWED: 'Firebase 에서 이메일/비밀번호 로그인이 꺼져 있습니다. 관리자에게 알려 주세요.',
+    API_KEY_INVALID: 'Firebase 웹 API 키가 올바르지 않습니다.',
+    'API key not valid': 'Firebase 웹 API 키가 올바르지 않습니다.',
+    TOKEN_EXPIRED: '로그인이 만료되었습니다. 다시 로그인해 주세요.',
+    INVALID_REFRESH_TOKEN: '로그인이 만료되었습니다. 다시 로그인해 주세요.',
+    'DB 401': '데이터 접근 권한이 없습니다. (Firebase 규칙 확인)',
+    'Failed to fetch': '인터넷 연결을 확인해 주세요.'
+  };
+  const errMsg = e => { const c = String((e && e.message) || e || ''); if (/[가-힣]/.test(c)) return c; for (const k in ERR) if (c.indexOf(k) === 0) return ERR[k]; return '오류가 발생했습니다: ' + c; };
+  const say = (t, ok) => { const el = $a('aErr'); el.textContent = t || ''; el.classList.toggle('ok', !!ok); };
+  const configured = () => CFG.apiKey && CFG.apiKey.indexOf('FIREBASE_') !== 0;
+
+  // ---------- Firebase 인증 REST ----------
+  async function idt(method, body){
+    const r = await fetch('https://identitytoolkit.googleapis.com/v1/accounts:' + method + '?key=' + CFG.apiKey,
+      { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error((j.error && j.error.message) || ('HTTP ' + r.status));
+    return j;
+  }
+  function setSess(j){
+    sess = { uid: j.localId || j.user_id, email: j.email || (sess && sess.email) || '', idToken: j.idToken || j.id_token,
+             refreshToken: j.refreshToken || j.refresh_token, exp: Date.now() + (+(j.expiresIn || j.expires_in) || 3600) * 1000 };
+    try{ localStorage.setItem(LSK, JSON.stringify({ uid: sess.uid, email: sess.email, refreshToken: sess.refreshToken })); }catch(e){}
+  }
+  async function refresh(){
+    const r = await fetch('https://securetoken.googleapis.com/v1/token?key=' + CFG.apiKey,
+      { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: 'grant_type=refresh_token&refresh_token=' + encodeURIComponent(sess.refreshToken) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error((j.error && j.error.message) || ('HTTP ' + r.status));
+    setSess(j);
+  }
+  function scheduleRefresh(){   // 토큰은 1시간짜리 → 만료 5분 전에 새로 받고 실시간 연결을 다시 맺음
+    clearTimeout(refreshT);
+    refreshT = setTimeout(async () => {
+      try{ await refresh(); onRefresh.forEach(f => { try{ f(); }catch(e){} }); scheduleRefresh(); }
+      catch(e){ refreshT = setTimeout(scheduleRefresh, 30000); }
+    }, Math.max(10000, sess.exp - Date.now() - 300000));
+  }
+
+  // ---------- 데이터베이스 ----------
+  const url = p => `${CFG.db}/safewave/${CFG.key}${p}.json?auth=${encodeURIComponent(sess.idToken)}`;
+  async function db(method, p, body){
+    const r = await fetch(url(p), { method, headers: body !== undefined ? { 'content-type': 'application/json' } : {}, body: body !== undefined ? JSON.stringify(body) : undefined });
+    if (!r.ok) throw new Error('DB ' + r.status);
+    return r.json();
+  }
+
+  // ---------- 화면 ----------
+  function showForms(tab){
+    $a('aForms').hidden = false; $a('aWait').hidden = true;
+    const join = tab === 'join';
+    $a('fLogin').hidden = join; $a('fJoin').hidden = !join;
+    $a('atLogin').setAttribute('aria-selected', String(!join)); $a('atJoin').setAttribute('aria-selected', String(join));
+  }
+  function showWait(text){
+    $a('aForms').hidden = true; $a('aWait').hidden = false; $a('aWaitTx').innerHTML = text; say('');
+  }
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+  async function enter(){
+    me = await db('GET', '/users/' + sess.uid);
+    if (!me){   // 처음 로그인(또는 가입 직후): 승인 대기로 등록
+      me = { name: joinName || sess.email.split('@')[0], email: sess.email, role: 'pending', at: { '.sv': 'timestamp' } };
+      await db('PUT', '/users/' + sess.uid, me);
+      me.at = Date.now();
+    }
+    apply();
+  }
+  function apply(){
+    const role = me && me.role;
+    if (role === 'admin' || role === 'member'){
+      root.classList.add('authed'); root.classList.toggle('role-admin', role === 'admin');
+      $a('uName').textContent = me.name || sess.email;
+      $a('uRole').textContent = role === 'admin' ? '관리자' : '보호자';
+      $a('uRole').classList.toggle('adm', role === 'admin');
+      scheduleRefresh();
+      if (role === 'admin'){ loadUsers(); clearInterval(pendT); pendT = setInterval(loadUsers, 60000); }
+      readyRes();
+    } else if (role === 'rejected'){
+      showWait(`<b>${esc(me.name)}</b> 님의 가입 신청이 거절되었습니다.<br>관리자에게 문의해 주세요.`);
+    } else {
+      showWait(`<b>${esc(me.name)}</b> 님, 가입 신청이 접수되었습니다.<br>관리자가 승인하면 이용할 수 있습니다.<br><small style="color:var(--mu)">${esc(sess.email)}</small>`);
+    }
+  }
+  function logout(){
+    try{ localStorage.removeItem(LSK); }catch(e){}
+    location.reload();
+  }
+
+  async function busy(form, fn){
+    const b = form.querySelector('button[type=submit]'); b.disabled = true; say('');
+    try{ await fn(); }catch(e){ say(errMsg(e)); }
+    finally{ b.disabled = false; }
+  }
+
+  // ---------- 회원 관리 (관리자) ----------
+  const ROLE_TX = { pending: '승인 대기', member: '보호자', admin: '관리자', rejected: '거절됨' };
+  let users = {};
+  async function loadUsers(){
+    try{ users = (await db('GET', '/users')) || {}; }catch(e){ $a('uBody').innerHTML = `<tr><td colspan="5" style="color:#FDA4AF">${esc(errMsg(e))}</td></tr>`; return; }
+    const pend = Object.values(users).filter(u => u && u.role === 'pending').length;
+    $a('uPend').textContent = pend; $a('uPend').hidden = !pend;
+    renderUsers();
+  }
+  function renderUsers(){
+    const order = { pending: 0, admin: 1, member: 2, rejected: 3 };
+    const list = Object.keys(users).map(uid => Object.assign({ uid }, users[uid])).sort((a,b) => (order[a.role] ?? 9) - (order[b.role] ?? 9) || (b.at || 0) - (a.at || 0));
+    if (!list.length){ $a('uBody').innerHTML = '<tr><td colspan="5" style="color:var(--mu)">가입한 회원이 없습니다.</td></tr>'; return; }
+    $a('uBody').innerHTML = list.map(u => {
+      const self = u.uid === sess.uid, d = u.at ? new Date(u.at) : null;
+      const btn = (act, tx, cls) => `<button type="button" class="ghost ${cls || ''}" data-ua="${act}" data-uid="${esc(u.uid)}">${tx}</button>`;
+      let acts = '';
+      if (!self){
+        if (u.role === 'pending' || u.role === 'rejected') acts += btn('member', '승인', 'go');
+        if (u.role === 'pending') acts += btn('rejected', '거절');
+        if (u.role === 'member') acts += btn('admin', '관리자로') + btn('rejected', '이용 중지');
+        if (u.role === 'admin') acts += btn('member', '보호자로');
+      } else acts = '<span style="color:var(--mu);font-size:12px">나</span>';
+      return `<tr><td><b>${esc(u.name || '-')}</b></td><td>${esc(u.email || '-')}</td><td><span class="rtag ${esc(u.role)}">${esc(ROLE_TX[u.role] || u.role || '-')}</span></td>`
+        + `<td style="font-family:var(--mono);font-size:12px;color:var(--mu)">${d ? d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0') : '-'}</td><td class="acts">${acts}</td></tr>`;
+    }).join('');
+  }
+
+  // ---------- 이벤트 ----------
+  $a('atLogin').onclick = () => { showForms('login'); say(''); };
+  $a('atJoin').onclick = () => { showForms('join'); say(''); };
+  $a('fLogin').addEventListener('submit', e => { e.preventDefault(); const f = e.target;
+    busy(f, async () => {
+      if (!configured()) throw new Error('Firebase 웹 API 키가 아직 설정되지 않았습니다.');
+      setSess(await idt('signInWithPassword', { email: $a('lgEmail').value.trim(), password: $a('lgPw').value, returnSecureToken: true }));
+      await enter();
+    });
+  });
+  $a('fJoin').addEventListener('submit', e => { e.preventDefault(); const f = e.target;
+    busy(f, async () => {
+      if (!configured()) throw new Error('Firebase 웹 API 키가 아직 설정되지 않았습니다.');
+      const name = $a('jnName').value.trim(), pw = $a('jnPw').value;
+      if (!name) throw new Error('이름을 입력해 주세요.');
+      if (pw.length < 6) throw new Error('WEAK_PASSWORD');
+      if (pw !== $a('jnPw2').value) throw new Error('비밀번호 확인이 일치하지 않습니다.');
+      joinName = name;
+      setSess(await idt('signUp', { email: $a('jnEmail').value.trim(), password: pw, returnSecureToken: true }));
+      await enter();
+    });
+  });
+  $a('lgReset').onclick = async () => {
+    const email = $a('lgEmail').value.trim();
+    if (!email){ say('이메일을 먼저 입력한 뒤 눌러 주세요.'); $a('lgEmail').focus(); return; }
+    try{ await idt('sendOobCode', { requestType: 'PASSWORD_RESET', email }); say('비밀번호 재설정 메일을 보냈습니다. 메일함을 확인해 주세요.', true); }
+    catch(e){ say(errMsg(e)); }
+  };
+  $a('aRecheck').onclick = async () => { say(''); try{ await enter(); }catch(e){ say(errMsg(e)); } };
+  $a('aOut2').onclick = logout;
+  $a('uOut').onclick = logout;
+  $a('uReload').onclick = loadUsers;
+  $a('uBody').addEventListener('click', async e => {
+    const b = e.target.closest('[data-ua]'); if (!b) return;
+    b.disabled = true;
+    try{ await db('PATCH', '/users/' + b.dataset.uid, { role: b.dataset.ua }); await loadUsers(); }
+    catch(err){ alert(errMsg(err)); b.disabled = false; }
+  });
+
+  // ---------- 시작: 저장된 로그인이 있으면 자동 로그인 ----------
+  (async () => {
+    let saved = null; try{ saved = JSON.parse(localStorage.getItem(LSK)); }catch(e){}
+    if (!configured()){ showForms('login'); say('Firebase 웹 API 키가 아직 설정되지 않았습니다.'); return; }
+    if (!saved || !saved.refreshToken){ showForms('login'); return; }
+    sess = { uid: saved.uid, email: saved.email, refreshToken: saved.refreshToken, idToken: '', exp: 0 };
+    try{ await refresh(); await enter(); }
+    catch(e){ try{ localStorage.removeItem(LSK); }catch(_){} showForms('login'); say(errMsg(e)); }
+  })();
+
+  return {
+    ready,                                           // 승인된 회원으로 로그인되면 끝남
+    token: () => (sess && sess.idToken) || '',
+    isAdmin: () => !!(me && me.role === 'admin'),
+    loadUsers,
+    onRefresh: f => onRefresh.push(f),
+    refreshNow: async () => { try{ await refresh(); onRefresh.forEach(f => { try{ f(); }catch(e){} }); scheduleRefresh(); }catch(e){} }
+  };
+})();
+</script>
 <script>
 (function(){
   'use strict';
@@ -877,10 +1191,14 @@ html:not(.real) .ckey .zr{display:none}
   // 레이더가 보낸 실측 높이(Z). 원격(Firebase)은 몇 초 간격으로 오므로 8초까지는 마지막 값을 이어서 씀 (그래프가 끊기지 않게)
   const zLive = () => !!(LIVE.src && LIVE.z && Date.now() - LIVE.z.at < 8000);
   const zHist = [];   // 실측 Z 기록 (최근 60초, 0.5초 간격)
+  // 레이더(MR60FDA2)가 보내는 값은 "천장의 레이더 → 사람" 거리라서, 바닥 기준 높이 = 설치 높이 − 거리
+  //  서 있으면 거리가 짧아 높이가 크고(약 1.5m), 누우면 거리가 길어 높이가 작음(약 0.2m)
+  let RADAR_H = 2.2;   // 보드가 보내는 설치 높이(height)로 갱신됨
+  const toFloor = d => Math.max(0, Math.min(2.5, RADAR_H - Math.max(0, Math.min(3, +d))));
   // 보드가 Firebase zhist/<노드>/<유닉스초> 에 10초마다 남긴 높이 기록 (24시간 보관)
   const ZH = { range: [60, 3600, 86400].includes(+store.get('sw-zrange')) ? +store.get('sw-zrange') : 60, map: {}, arr: [], dirty: false };
   function zhPoints(range){
-    if (ZH.dirty){ ZH.dirty = false; ZH.arr = Object.keys(ZH.map).map(k => [+k, +ZH.map[k]]).filter(p => isFinite(p[0]) && isFinite(p[1])).sort((a,b) => a[0]-b[0]); }
+    if (ZH.dirty){ ZH.dirty = false; ZH.arr = Object.keys(ZH.map).map(k => [+k, +ZH.map[k]]).filter(p => isFinite(p[0]) && isFinite(p[1])).map(p => [p[0], toFloor(p[1])]).sort((a,b) => a[0]-b[0]); }   // 기록도 거리 → 바닥 높이
     const from = Date.now()/1000 - range;
     return ZH.arr.filter(p => p[0] >= from);
   }
@@ -892,14 +1210,47 @@ html:not(.real) .ckey .zr{display:none}
     b.setAttribute('aria-pressed', String(+b.dataset.r === ZH.range));
     b.addEventListener('click', () => zhSetRange(+b.dataset.r));
   });
+  // 보드가 한 번에 묶어 보낸 높이 값들(zs: [몇ms전, 높이])을 실제 잰 시각 순서로 쌓아 두고, 조금 늦게 이어서 재생
+  const ZB = { buf: [], gap: 700, lastAt: 0, lastTs: null };
+  function addZs(i){
+    if (!Array.isArray(i.zs) || !i.zs.length || i.ts === ZB.lastTs) return;
+    ZB.lastTs = i.ts;
+    const now = Date.now();
+    i.zs.forEach(s => { const a = +s[0], z = +s[1]; if (isFinite(a) && isFinite(z)) ZB.buf.push({ t: now - a, z: toFloor(z) }); });
+    ZB.buf.sort((a,b) => a.t - b.t);
+    while (ZB.buf.length && now - ZB.buf[0].t > 15000) ZB.buf.shift();
+    // 튀는 값 거르기: 앞뒤 두 개씩(5개)의 중앙값으로 그림. 레이더가 순간적으로 잘못 잰 값은 사라지고 실제 움직임은 남음
+    const b = ZB.buf;
+    for (let k = 0; k < b.length; k++){
+      const w = b.slice(Math.max(0, k-2), Math.min(b.length, k+3)).map(s => s.z).sort((x,y) => x - y);
+      b[k].f = w[w.length >> 1];
+    }
+    if (ZB.lastAt) ZB.gap = ZB.gap*0.8 + Math.min(5000, now - ZB.lastAt)*0.2;   // 묶음이 오는 평균 간격
+    ZB.lastAt = now;
+    const last = ZB.buf[ZB.buf.length-1];
+    if (last) LIVE.z = { v: last.z, at: now };
+  }
+  function zPlay(){   // 지금 화면에 보여줄 높이 (재생 지연 = 묶음 간격보다 조금 길게)
+    const b = ZB.buf, n = b.length;
+    if (!n || Date.now() - b[n-1].t > 8000) return null;
+    const pt = Date.now() - Math.max(600, Math.min(4000, ZB.gap*1.3 + 200));
+    const v = s => s.f != null ? s.f : s.z;   // 걸러진 값
+    if (pt <= b[0].t) return v(b[0]);
+    if (pt >= b[n-1].t) return v(b[n-1]);
+    let k = 1; while (k < n && b[k].t < pt) k++;
+    const a = b[k-1], c = b[k], f = (pt - a.t) / Math.max(1, c.t - a.t);
+    return v(a) + (v(c) - v(a)) * f;
+  }
   function setPos(i){
     if (i == null) return;
-    if (i.pz != null && isFinite(+i.pz)) LIVE.z = { v: Math.max(0, Math.min(2.5, +i.pz)), at: Date.now() };
+    if (+i.height >= 1 && +i.height <= 4 && +i.height !== RADAR_H){ RADAR_H = +i.height; ZH.dirty = true; }
+    addZs(i);
+    if (i.pz != null && isFinite(+i.pz) && !ZB.buf.length) LIVE.z = { v: toFloor(i.pz), at: Date.now() };
     if (i.px == null) return;
     const fx = LS_get('flipX') ? -1 : 1, fy = LS_get('flipY') ? -1 : 1, sw = LS_get('swapXY');
     let ax = +i.px * fx, ay = +i.py * fy; if (sw){ const t = ax; ax = ay; ay = t; }
     const cl = v => Math.max(0.15, Math.min(ROOM - 0.15, v));
-    LIVE.pos = { x: cl(ROOM/2 + ax), y: cl(ROOM/2 + ay), rx: +i.px, ry: +i.py, z: i.pz != null ? +i.pz : null, n: i.pn || 1, at: Date.now() };
+    LIVE.pos = { x: cl(ROOM/2 + ax), y: cl(ROOM/2 + ay), rx: +i.px, ry: +i.py, z: i.pz != null ? toFloor(i.pz) : null, n: i.pn || 1, at: Date.now() };
   }
   function LS_get(k){ try{ return JSON.parse(localStorage.getItem('sw-live-' + k)); }catch(e){ return null; } }
   const hist = { z:[], b:[] };
@@ -957,11 +1308,13 @@ html:not(.real) .ckey .zr{display:none}
 
   /* ---------- 탭 ---------- */
   function go(tab){
+    if ((tab === 'settings' || tab === 'users') && !SWAuth.isAdmin()) return;   // 관리자 전용 화면
     S.tab = tab;
-    ['live','log','profile','settings'].forEach(v => { $('view-'+v).hidden = v !== tab; });
+    ['live','log','profile','settings','users'].forEach(v => { $('view-'+v).hidden = v !== tab; });
     document.querySelectorAll('.nav button[data-go]').forEach(b => { if (b.dataset.go === tab) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); });
     if (tab === 'profile') fillProfileForm();
     if (tab === 'settings') fillSettingsForm();
+    if (tab === 'users') SWAuth.loadUsers();
     if (tab === 'live') requestAnimationFrame(fitAll);
     window.scrollTo({ top:0, behavior: reduce ? 'auto' : 'smooth' });
   }
@@ -1419,8 +1772,9 @@ html:not(.real) .ckey .zr{display:none}
       if (dist > 0.03){ const v = Math.min(dist, 0.6*dt); S.x += dx/dist*v; S.y += dy/dist*v; }
       else { S.wait -= dt; if (S.wait <= 0){ pick(); S.wait = 1.5 + Math.random()*3; } }
     }
-    const zt = REAL && zLive() ? LIVE.z.v : S.mode === 'normal' ? (S.rest ? 0.5 : REAL ? STAND_Z : STAND_Z + Math.sin(t/700)*0.015) : FALL_Z;
-    S.z += (zt - S.z) * Math.min(1, dt*(S.mode === 'normal' ? 3 : 7));
+    const zp = REAL && zLive() ? zPlay() : null;   // 묶음으로 받은 값이 있으면 실제 잰 순서대로 재생
+    const zt = zp != null ? zp : REAL && zLive() ? LIVE.z.v : S.mode === 'normal' ? (S.rest ? 0.5 : REAL ? STAND_Z : STAND_Z + Math.sin(t/700)*0.015) : FALL_Z;
+    S.z += (zt - S.z) * Math.min(1, dt*(zp != null ? 10 : S.mode === 'normal' ? 3 : 7));
     const bt = S.mode === 'normal' ? 16 : S.mode === 'grace' ? 22 : 9;
     S.bpm += (bt - S.bpm) * Math.min(1, dt*0.8);
     if (S.mode === 'grace'){
@@ -1896,14 +2250,14 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
 
   /* ---------- 원격 (Firebase 실시간 DB · 누가 열어도 자동 연결) ---------- */
   const FB = { url: 'https://y-csts-default-rtdb.asia-southeast1.firebasedatabase.app', key: 'sw012b30e61a4cb665482a', node: 'daegu-102-1' };
-  const fbPath = p => `${FB.url}/safewave/${FB.key}${p}.json`;
+  const fbPath = p => `${FB.url}/safewave/${FB.key}${p}.json?auth=${encodeURIComponent(SWAuth.token())}`;   // 로그인 토큰을 붙여 요청
   let lastUp = null, lastUpAt = 0;
   function connectRemote(){
     if (remote) return;
     const es = new EventSource(fbPath(`/nodes/${FB.node}`));
-    const ev = new EventSource(fbPath('/events') + '?orderBy=%22$key%22&limitToLast=1');
+    const ev = new EventSource(fbPath('/events') + '&orderBy=%22$key%22&limitToLast=1');
     // 높이 기록: 최근 24시간을 받아 두고, 보드가 새로 쓰거나 지우는 것도 실시간 반영
-    const zh = new EventSource(fbPath(`/zhist/${FB.node}`) + '?orderBy=%22$key%22&startAt=%22' + Math.floor(Date.now()/1000 - 86400) + '%22');
+    const zh = new EventSource(fbPath(`/zhist/${FB.node}`) + '&orderBy=%22$key%22&startAt=%22' + Math.floor(Date.now()/1000 - 86400) + '%22');
     const onZh = e => {
       let m; try{ m = JSON.parse(e.data); }catch(_){ return; }
       if (m.path === '/'){ if (e.type === 'put') ZH.map = {}; Object.assign(ZH.map, m.data || {}); Object.keys(ZH.map).forEach(k => { if (ZH.map[k] == null) delete ZH.map[k]; }); }
@@ -1912,6 +2266,11 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
     };
     zh.addEventListener('put', onZh); zh.addEventListener('patch', onZh);
     remote = { es, ev, zh, node: FB.node, first: true };
+    // 토큰 만료 → 새로 받아 다시 연결 / 권한 없음 → 안내
+    [es, ev, zh].forEach(s => {
+      s.addEventListener('auth_revoked', () => SWAuth.refreshNow());
+      s.addEventListener('cancel', () => log('[원격] 데이터 접근 권한이 없습니다 (계정 승인·Firebase 규칙 확인)', 'wn'));
+    });
     let node = null;
     const onNode = e => {
       let m; try{ m = JSON.parse(e.data); }catch(_){ return; }
@@ -2030,7 +2389,12 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
   };
   setInterval(liveUi, 1000);
   liveUi();
-  if (REAL) connectRemote();   // 페이지를 열면 자동으로 실시간 수신 시작
+  if (REAL) SWAuth.ready.then(connectRemote);   // 승인된 회원으로 로그인하면 자동으로 실시간 수신 시작
+  SWAuth.onRefresh(() => {                       // 로그인 토큰이 바뀌면 실시간 연결을 조용히 다시 맺음
+    if (!remote) return;
+    try{ remote.es.close(); remote.ev.close(); remote.zh.close(); }catch(e){}
+    remote = null; connectRemote();
+  });
 })();
 </script>
 </body>
