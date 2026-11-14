@@ -631,6 +631,9 @@ html:not(.role-admin) #view-profile :is(input,select,textarea){border-color:tran
               <button type="button" id="v3d" aria-pressed="false">3D</button>
             </div>
             <button type="button" class="zbtn rst adm-only" id="zReset" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"/></svg>구역 초기화</button>
+            <button type="button" class="zbtn adm-only" id="pCal" title="레이더 바로 아래에 서서 누르면 그 자리가 지도 가운데가 됩니다">가운데 맞추기</button>
+            <button type="button" class="zbtn adm-only" id="pFlipY" aria-pressed="false" title="앞뒤 방향이 반대로 보이면 누르세요">앞뒤 반전</button>
+            <button type="button" class="zbtn adm-only" id="pFlipX" aria-pressed="false" title="좌우 방향이 반대로 보이면 누르세요">좌우 반전</button>
             <button type="button" class="zbtn adm-only" id="zEdit" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4"/></svg><span id="zEditTx">예외 구역 편집</span></button>
           </div>
         </div>
@@ -1250,12 +1253,18 @@ window.SWAuth = (function(){
     addZs(i);
     if (i.pz != null && isFinite(+i.pz) && !ZB.buf.length) LIVE.z = { v: toFloor(i.pz), at: Date.now() };
     if (i.px == null) return;
-    const fx = LS_get('flipX') ? -1 : 1, fy = LS_get('flipY') ? -1 : 1, sw = LS_get('swapXY');
-    let ax = +i.px * fx, ay = +i.py * fy; if (sw){ const t = ax; ax = ay; ay = t; }
+    // 레이더 +Y(앞) 는 지도 위쪽으로 (지도는 아래로 갈수록 y 가 커짐). flipY 로 반대로.
+    // 가운데 맞추기: 레이더 바로 아래에서 잡힌 값(off)을 빼서 그 자리를 지도 가운데로.
+    POSRAW.push([+i.px, +i.py, Date.now()]); while (POSRAW.length > 12) POSRAW.shift();
+    const off = LS_get('posOff') || [0, 0];
+    const fx = LS_get('flipX') ? -1 : 1, fy = LS_get('flipY') ? 1 : -1, sw = LS_get('swapXY');
+    let ax = (+i.px - off[0]) * fx, ay = (+i.py - off[1]) * fy; if (sw){ const t = ax; ax = ay; ay = t; }
     const cl = v => Math.max(0.15, Math.min(ROOM - 0.15, v));
     LIVE.pos = { x: cl(ROOM/2 + ax), y: cl(ROOM/2 + ay), rx: +i.px, ry: +i.py, z: i.pz != null ? toFloor(i.pz) : null, n: i.pn || 1, at: Date.now() };
   }
   function LS_get(k){ try{ return JSON.parse(localStorage.getItem('sw-live-' + k)); }catch(e){ return null; } }
+  function LS_set(k, v){ try{ if (v == null) localStorage.removeItem('sw-live-' + k); else localStorage.setItem('sw-live-' + k, JSON.stringify(v)); }catch(e){} }
+  const POSRAW = [];
   const hist = { z:[], b:[] };
   for (let i=0;i<120;i++){ hist.z.push(STAND_Z); hist.b.push(16); }
   const stars = Array.from({length:90}, () => [Math.random(), Math.random(), Math.random()*0.9+0.3, Math.random()]);
@@ -1438,7 +1447,10 @@ window.SWAuth = (function(){
     if (S.mode !== 'normal') return;
     if (S.rest && LIVE.src) return;   // 이미 예외 구역 휴식으로 처리함 (보드가 해제 명령을 받을 때까지 같은 신호가 몇 번 더 옴)
     // 예외 구역(안전지대) 확인: 시뮬레이션은 화면 위치, 실제 레이더는 레이더가 보낸 위치(X·Y)로 판단
-    const real = !!LIVE.src, hasPos = !real || posLive();
+    // ZONE_REAL: 실제 레이더 위치(X·Y)로 예외 구역을 판단할지.
+    // 펌웨어가 점을 20바이트로 바르게 읽은 뒤 시험: 오른쪽 1m 이동 → X 1.27m 변화 (실제 움직임을 따라감) → 켬
+    const ZONE_REAL = true;
+    const real = !!LIVE.src, hasPos = !real || (ZONE_REAL && posLive());
     const z = hasPos ? zoneAt(real ? LIVE.pos.x : S.x, real ? LIVE.pos.y : S.y) : null;
     if (z){
       S.rest = `'${z.name}' ${z.custom ? '예외 구역' : '안전지대'}`; S.tx = S.x; S.ty = S.y; render();
@@ -1450,7 +1462,7 @@ window.SWAuth = (function(){
     }
     if (real && !hasPos && allZones().length && !S.zoneWarned){
       S.zoneWarned = true;
-      log('레이더가 위치(X·Y)를 보내지 않아 예외 구역을 적용할 수 없습니다 · 높이만으로 판정', 'sys');
+      log('실제 레이더 모드에서는 위치(X·Y) 정확도 확인 전까지 예외 구역을 적용하지 않습니다 · 높이와 레이더 낙상 신호로 판정', 'sys');
     }
     S.rest = null;
     S.mode = 'grace'; S.graceLeft = C.grace; S.tx = S.x; S.ty = S.y;
@@ -1569,6 +1581,16 @@ window.SWAuth = (function(){
     log(on ? '예외 구역 편집 모드 시작' : '예외 구역 편집 완료', 'sys');
   }
   $('zEdit').onclick = () => setEditing(!editing);
+  const syncAxisBtns = () => ['X','Y'].forEach(a => { const on = !!LS_get('flip' + a); $('pFlip' + a).classList.toggle('on', on); $('pFlip' + a).setAttribute('aria-pressed', String(on)); });
+  syncAxisBtns();
+  ['X','Y'].forEach(a => $('pFlip' + a).onclick = () => { LS_set('flip' + a, LS_get('flip' + a) ? null : true); syncAxisBtns(); log((a === 'X' ? '좌우' : '앞뒤') + ' 방향 ' + (LS_get('flip' + a) ? '반전' : '기본'), 'sys'); });
+  $('pCal').onclick = () => {
+    const now = Date.now(), r = POSRAW.filter(p => now - p[2] < 3000);
+    if (r.length < 3){ log('위치 값이 없어서 가운데를 못 맞췄습니다 (레이더 앞에 서 주세요)', 'wn'); return; }
+    const med = k => { const v = r.map(p => p[k]).sort((a,b) => a-b); return +v[v.length >> 1].toFixed(2); };
+    LS_set('posOff', [med(0), med(1)]);
+    log(`가운데 맞춤: 레이더 값 X ${med(0)}m, Y ${med(1)}m 을 가운데로`, 'sys');
+  };
   $('zReset').onclick = () => { customZones = []; store.set('sw-zones', customZones); renderZones(); log('사용자 지정 예외 구역 전체 초기화', 'wn'); };
   function renderZones(){
     $('zlist').innerHTML = allZones().map(z => `<span class="zchip${z.custom ? ' custom' : ''}">${z.custom ? '예외' : '안전지대'} · ${esc(z.name)} <small>${z.w.toFixed(1)}×${z.h.toFixed(1)}m</small></span>`).join('');
