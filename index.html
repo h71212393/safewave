@@ -1185,6 +1185,7 @@ window.SWAuth = (function(){
     ready,                                           // 승인된 회원으로 로그인되면 끝남
     token: () => (sess && sess.idToken) || '',
     isAdmin: () => !!(me && me.role === 'admin'),
+    name: () => (me && me.name) || '',
     loadUsers,
     onRefresh: f => onRefresh.push(f),
     refreshNow: async () => { try{ await refresh(); onRefresh.forEach(f => { try{ f(); }catch(e){} }); scheduleRefresh(); }catch(e){} }
@@ -1659,6 +1660,7 @@ window.SWAuth = (function(){
     const name = $('zName').value.trim() || `예외 구역 #${customZones.length + 1}`;
     const z = Object.assign(pendingZone, { name, hgt:0.4, custom:true });
     customZones.push(z); store.set('sw-zones', customZones);
+    shareSave({ zones: customZones }, '예외 구역');
     log(`'${name}' 예외 구역 지정 완료 (${z.w.toFixed(1)}m × ${z.h.toFixed(1)}m)`, 'ok');
     closeZ(); renderZones();
   };
@@ -1679,15 +1681,16 @@ window.SWAuth = (function(){
   $('zEdit').onclick = () => setEditing(!editing);
   const syncAxisBtns = () => ['X','Y'].forEach(a => { const on = !!LS_get('flip' + a); $('pFlip' + a).classList.toggle('on', on); $('pFlip' + a).setAttribute('aria-pressed', String(on)); });
   syncAxisBtns();
-  ['X','Y'].forEach(a => $('pFlip' + a).onclick = () => { LS_set('flip' + a, LS_get('flip' + a) ? null : true); syncAxisBtns(); log((a === 'X' ? '좌우' : '앞뒤') + ' 방향 ' + (LS_get('flip' + a) ? '반전' : '기본'), 'sys'); });
+  ['X','Y'].forEach(a => $('pFlip' + a).onclick = () => { LS_set('flip' + a, LS_get('flip' + a) ? null : true); syncAxisBtns(); shareSave({ ['flip' + a]: LS_get('flip' + a) || null }, '방향 반전'); log((a === 'X' ? '좌우' : '앞뒤') + ' 방향 ' + (LS_get('flip' + a) ? '반전' : '기본'), 'sys'); });
   $('pCal').onclick = () => {
     const now = Date.now(), r = POSRAW.filter(p => now - p[2] < 3000);
     if (r.length < 3){ log('위치 값이 없어서 가운데를 못 맞췄습니다 (레이더 앞에 서 주세요)', 'wn'); return; }
     const med = k => { const v = r.map(p => p[k]).sort((a,b) => a-b); return +v[v.length >> 1].toFixed(2); };
     LS_set('posOff', [med(0), med(1)]);
+    shareSave({ posOff: [med(0), med(1)] }, '가운데 맞추기');
     log(`가운데 맞춤: 레이더 값 X ${med(0)}m, Y ${med(1)}m 을 가운데로`, 'sys');
   };
-  $('zReset').onclick = () => { customZones = []; store.set('sw-zones', customZones); renderZones(); log('사용자 지정 예외 구역 전체 초기화', 'wn'); };
+  $('zReset').onclick = () => { customZones = []; store.set('sw-zones', customZones); renderZones(); shareSave({ zones: null }, '예외 구역 초기화'); log('사용자 지정 예외 구역 전체 초기화', 'wn'); };
   function renderZones(){
     $('zlist').innerHTML = allZones().map(z => `<span class="zchip${z.custom ? ' custom' : ''}">${z.custom ? '예외' : '안전지대'} · ${esc(z.name)} <small>${z.w.toFixed(1)}×${z.h.toFixed(1)}m</small></span>`).join('');
   }
@@ -2730,6 +2733,67 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
     try{ remote.es.close(); remote.ev.close(); remote.zh.close(); }catch(e){}
     remote = null; connectRemote();
   });
+
+  // ---- 공유 설정: 예외 구역 + 지도 보정(가운데 맞추기·반전)을 Firebase shared/<노드> 에 두고 ----
+  // ---- 누가 바꾸든 모든 화면에 실시간으로 반영 (예전엔 브라우저마다 따로 저장) ----
+  const SH_KEYS = ['posOff', 'flipX', 'flipY', 'swapXY'];
+  const SH = { es: null, first: true };
+  function shareApply(d, fromStream){
+    d = d || {};
+    const zs = Array.isArray(d.zones) ? d.zones : d.zones ? Object.values(d.zones) : [];
+    const before = JSON.stringify([customZones, SH_KEYS.map(LS_get)]);
+    customZones = zs.filter(z => z && isFinite(z.x) && isFinite(z.w)).map(z => Object.assign({}, z, { custom: true }));
+    store.set('sw-zones', customZones);
+    SH_KEYS.forEach(k => LS_set(k, d[k] == null || d[k] === false ? null : d[k]));
+    renderZones(); syncAxisBtns();
+    if (fromStream && !SH.first && before !== JSON.stringify([customZones, SH_KEYS.map(LS_get)]))
+      log(`[공유] ${d.by ? d.by + ' 님이 ' : ''}예외 구역·지도 설정을 바꿔서 이 화면에도 반영했습니다`, 'sys');
+  }
+  async function shareSave(patch, what){
+    if (!SWAuth.token()) return;
+    try{
+      const body = Object.assign({}, patch, { by: SWAuth.name() || null, at: { '.sv': 'timestamp' } });
+      const r = await fetch(fbPath(`/shared/${FB.node}`), { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+      if (!r.ok) log(`[공유] ${what} 저장 실패 · HTTP ${r.status}${r.status === 401 ? ' (Firebase 규칙에 shared 추가 필요)' : ''} · 이 화면에만 적용됨`, 'wn');
+    }catch(e){ log(`[공유] ${what} 저장 실패: ${e.message} · 이 화면에만 적용됨`, 'wn'); }
+  }
+  function shareConnect(){
+    if (SH.es || !SWAuth.token()) return;
+    const es = new EventSource(fbPath(`/shared/${FB.node}`));
+    SH.es = es;
+    let doc = null;
+    const on = e => {
+      let m; try{ m = JSON.parse(e.data); }catch(_){ return; }
+      if (m.path === '/'){
+        doc = m.data;
+        // 처음 쓰는 경우: 공유 값이 아직 없으면 관리자의 이 브라우저 설정을 올려서 시작
+        if (SH.first && !doc){
+          SH.first = false;
+          if (SWAuth.isAdmin() && (customZones.length || SH_KEYS.some(k => LS_get(k) != null))){
+            const init = { zones: customZones.length ? customZones : null };
+            SH_KEYS.forEach(k => init[k] = LS_get(k));
+            shareSave(init, '처음 공유');
+          }
+          return;   // 공유 값이 없을 땐 이 화면 설정을 지우지 않음
+        }
+      } else {
+        doc = doc || {};
+        const k = m.path.replace(/^\//, '').split('/')[0];
+        if (e.type === 'patch') Object.assign(doc, m.data);
+        else if (m.path.split('/').length === 2) doc[k] = m.data;
+        else { fetch(fbPath(`/shared/${FB.node}`)).then(r => r.ok ? r.json() : null).then(d => { doc = d; shareApply(doc, true); }); return; }
+      }
+      shareApply(doc, true);
+      SH.first = false;
+    };
+    es.addEventListener('put', on); es.addEventListener('patch', on);
+    es.addEventListener('auth_revoked', () => { es.close(); SH.es = null; SWAuth.refreshNow(); });
+    const denied = () => { es.close(); SH.es = null; log('[공유] 공유 설정을 읽을 권한이 없습니다 (Firebase 규칙에 shared 추가 필요) · 이 화면 설정만 씀', 'wn'); };
+    es.addEventListener('cancel', denied);
+    es.onerror = () => { if (es.readyState === 2) denied(); };
+  }
+  if (REAL) SWAuth.ready.then(shareConnect);
+  SWAuth.onRefresh(() => { if (SH.es){ try{ SH.es.close(); }catch(e){} SH.es = null; } shareConnect(); });
 })();
 </script>
 </body>
