@@ -640,8 +640,9 @@ html:not(.role-admin) #view-profile :is(input,select,textarea){border-color:tran
         <div class="map" id="mapBox">
           <canvas id="map" tabindex="0" aria-label="레이더 맵"></canvas>
           <div class="coord">
-            <div class="lb">실측 높이</div>
-            <span id="cx" hidden></span><span id="cy" hidden></span>
+            <div class="lb">실측 위치 · 높이</div>
+            <div class="r"><span>X 좌우</span><span id="cx">—</span></div>
+            <div class="r"><span>Y 앞뒤</span><span id="cy">—</span></div>
             <div class="r"><span>Z 높이</span><span class="z" id="cz">—</span></div>
           </div>
           <div class="editbadge"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4"/></svg>드래그해서 구역 지정</div>
@@ -1222,13 +1223,14 @@ window.SWAuth = (function(){
     i.zs.forEach(s => { const a = +s[0], z = +s[1]; if (isFinite(a) && isFinite(z)) ZB.buf.push({ t: now - a, z: toFloor(z) }); });
     ZB.buf.sort((a,b) => a.t - b.t);
     while (ZB.buf.length && now - ZB.buf[0].t > 15000) ZB.buf.shift();
-    // 튀는 값 거르기: 직전 1.2초 안에서 "두 번째로 높은 값"으로 그림
+    // 튀는 값 거르기: 직전 2.5초 안에서 "두 번째로 높은 값"으로 그림 (11-16 기록으로 시험: 2초는 물건 값에 가끔 지고, 2.5초는 안 짐)
     //  - 레이더 오차(비스듬한 위치, 다리·몸통 반사)는 대부분 높이를 낮게 만들어서, 높은 쪽 값이 실제 자세(머리 높이)에 가까움
+    //  - 레이더가 사람과 주변 물건(책상·의자, 높이 0.6m 쯤)을 번갈아 잡을 때 물건 쪽 낮은 값이 0.5초 가까이 이어져서 2초로 늘림
     //  - 맨 꼭대기 값 하나는 버려서, 누워 있을 때 위로 한 번 튄 값에도 속지 않음
     const b = ZB.buf;
     for (let k = 0; k < b.length; k++){
       let a1 = b[k].z, a2 = -1;
-      for (let j = k - 1; j >= 0 && b[k].t - b[j].t <= 1200; j--){ const h = b[j].z; if (h > a1){ a2 = a1; a1 = h; } else if (h > a2) a2 = h; }
+      for (let j = k - 1; j >= 0 && b[k].t - b[j].t <= 2500; j--){ const h = b[j].z; if (h > a1){ a2 = a1; a1 = h; } else if (h > a2) a2 = h; }
       b[k].f = a2 >= 0 ? a2 : a1;
     }
     if (ZB.lastAt) ZB.gap = ZB.gap*0.8 + Math.min(5000, now - ZB.lastAt)*0.2;   // 묶음이 오는 평균 간격
@@ -1253,14 +1255,64 @@ window.SWAuth = (function(){
     addZs(i);
     if (i.pz != null && isFinite(+i.pz) && !ZB.buf.length) LIVE.z = { v: toFloor(i.pz), at: Date.now() };
     if (i.px == null) return;
+    const now = Date.now();
+    // 위치 값 모으기: 새 펌웨어는 "ps":[[몇ms전,X,Y],...] 로 그동안 잰 값을 다 보냄. 예전 펌웨어는 px/py 1개
+    if (i.ts == null || i.ts !== PB.lastTs){
+      PB.lastTs = i.ts;
+      if (!LIVE.pos || now - LIVE.pos.at > 3000) PB.buf.length = 0;   // 오래 끊겼다 다시 잡히면 예전 값 버리기
+      const add = (t, x, y) => { if (isFinite(t) && isFinite(x) && isFinite(y)){ PB.buf.push({ t, x, y }); POSRAW.push([x, y, t]); } };
+      if (Array.isArray(i.ps) && i.ps.length) i.ps.forEach(s => add(now - (+s[0]), +s[1], +s[2]));
+      else add(now, +i.px, +i.py);
+      PB.buf.sort((a,b) => a.t - b.t);
+      while (PB.buf.length && now - PB.buf[0].t > 3000) PB.buf.shift();
+      while (POSRAW.length > 30) POSRAW.shift();
+    }
+    if (!PB.buf.length) return;
     // 레이더 +Y(앞) 는 지도 위쪽으로 (지도는 아래로 갈수록 y 가 커짐). flipY 로 반대로.
     // 가운데 맞추기: 레이더 바로 아래에서 잡힌 값(off)을 빼서 그 자리를 지도 가운데로.
-    POSRAW.push([+i.px, +i.py, Date.now()]); while (POSRAW.length > 12) POSRAW.shift();
     const off = LS_get('posOff') || [0, 0];
     const fx = LS_get('flipX') ? -1 : 1, fy = LS_get('flipY') ? 1 : -1, sw = LS_get('swapXY');
-    let ax = (+i.px - off[0]) * fx, ay = (+i.py - off[1]) * fy; if (sw){ const t = ax; ax = ay; ay = t; }
-    const cl = v => Math.max(0.15, Math.min(ROOM - 0.15, v));
-    LIVE.pos = { x: cl(ROOM/2 + ax), y: cl(ROOM/2 + ay), rx: +i.px, ry: +i.py, z: i.pz != null ? toFloor(i.pz) : null, n: i.pn || 1, at: Date.now() };
+    const mapXY = s => { let ax = (s.x - off[0]) * fx, ay = (s.y - off[1]) * fy; if (sw){ const t = ax; ax = ay; ay = t; } return [ax, ay]; };
+    // 사람만 고르기: 레이더가 사람과 주변 물건을 번갈아 잡음. 같은 순간의 높이가
+    // 걸러진 높이(사람 머리 쪽)보다 0.3m 넘게 낮으면 물건 쪽 값으로 보고 위치에서도 뺌
+    const zAtT = t => { let best = null, bd = 80; ZB.buf.forEach(e => { const d = Math.abs(e.t - t); if (d < bd){ bd = d; best = e; } }); return best; };
+    const K = PB.buf.filter(p => { const e = zAtT(p.t); return !e || e.f == null || e.z >= e.f - 0.3; });
+    if (!K.length) return;
+    const med = (lo, hi) => {   // lo~hi 시각 사이 값들의 중앙값 (튀는 값 무시)
+      const s = K.filter(p => p.t >= lo && p.t <= hi).map(mapXY);
+      if (!s.length) return null;
+      const m = k => { const v = s.map(p => p[k]).sort((a,b) => a-b); return v[v.length >> 1]; };
+      return [m(0), m(1)];
+    };
+    const tn = K[K.length - 1].t;
+    let cur = med(tn - 350, tn);                  // 최근 0.35초 중앙값 → 늦음 0.2초 안팎
+    // 움직이는 중인지: 최근 0.5초와 0.7~1.5초 전을 비교. 양쪽에 값이 2개 이상이고 25cm 넘게 옮겨졌을 때만
+    // (가만히 있으면 레이더가 1초에 1개쯤만 보내고 값이 ±10cm 흔들려서, 이걸 움직임으로 착각하면 점이 앞질러 튐)
+    const cnt = (lo, hi) => K.filter(p => p.t >= lo && p.t <= hi).length;
+    let v = [0, 0];
+    if (cnt(tn - 500, tn) >= 2 && cnt(tn - 1500, tn - 700) >= 2){
+      const a = med(tn - 500, tn), b = med(tn - 1500, tn - 700), dd = Math.hypot(a[0] - b[0], a[1] - b[1]);
+      if (dd > 0.25){
+        v = [(a[0] - b[0]) / 0.85, (a[1] - b[1]) / 0.85];
+        const sp = Math.hypot(v[0], v[1]); if (sp > 1.2) v = [v[0] * 1.2 / sp, v[1] * 1.2 / sp];
+      }
+    }
+    // 가만히 있을 때: 레이더 값이 ±5~10cm 흔들림 (11-16 측정) → 최근 1.5초 중앙값을 쓰고, 12cm 안쪽 변화는 무시
+    if (!v[0] && !v[1]){
+      const still = med(tn - 1500, tn); if (still) cur = still;
+      if (LIVE.pos && now - LIVE.pos.at < 3000 && Math.hypot(cur[0] - LIVE.pos.vx, -cur[1] - LIVE.pos.vy) < 0.12) cur = [LIVE.pos.vx, -LIVE.pos.vy];
+    }
+    const cl = val => Math.max(0.15, Math.min(ROOM - 0.15, val));
+    PB.v = v; PB.tn = tn;
+    LIVE.pos = { x: cl(ROOM/2 + cur[0]), y: cl(ROOM/2 + cur[1]), rx: +i.px, ry: +i.py, vx: cur[0], vy: -cur[1], z: i.pz != null ? toFloor(i.pz) : null, n: i.pn || 1, at: now };
+  }
+  const PB = { buf: [], lastTs: null, v: [0, 0], tn: 0 };
+  // 화면에 그릴 위치: 마지막 값 + 움직이던 방향으로 조금 앞서 (전송 지연만큼, 최대 0.45초)
+  function posAhead(){
+    const p = LIVE.pos; if (!p) return null;
+    const lead = Math.max(0, Math.min(0.4, (Date.now() - PB.tn) / 1000)) * 0.7;
+    const cl = val => Math.max(0.15, Math.min(ROOM - 0.15, val));
+    return [cl(p.x + PB.v[0] * lead), cl(p.y + PB.v[1] * lead)];
   }
   function LS_get(k){ try{ return JSON.parse(localStorage.getItem('sw-live-' + k)); }catch(e){ return null; } }
   function LS_set(k, v){ try{ if (v == null) localStorage.removeItem('sw-live-' + k); else localStorage.setItem('sw-live-' + k, JSON.stringify(v)); }catch(e){} }
@@ -1802,8 +1854,8 @@ window.SWAuth = (function(){
     if (S.view === '3d' && !drag && !reduce) S.yaw += dt*0.08;
     if (REAL && !posLive()){ S.x += (ROOM/2 - S.x)*Math.min(1, dt*2); S.y += (ROOM/2 - S.y)*Math.min(1, dt*2); }
     if (REAL && posLive()){
-      const k = Math.min(1, dt*6);
-      S.x += (LIVE.pos.x - S.x)*k; S.y += (LIVE.pos.y - S.y)*k;
+      const k = Math.min(1, dt*8), [tx, ty] = posAhead();   // 앞서 그린 목표를 빠르게 따라감
+      S.x += (tx - S.x)*k; S.y += (ty - S.y)*k;
       pT += dt; if (pT >= 0.3){ pT = 0; S.trail.push([S.x,S.y]); if (S.trail.length > 30) S.trail.shift(); }
     } else if (REAL && S.trail.length && !posLive()){ S.trail.length = 0; }
     if (!REAL && S.mode === 'normal' && !S.rest){
@@ -1840,7 +1892,9 @@ window.SWAuth = (function(){
       if (S.tab === 'live'){
         if (REAL){
           const pl = posLive(), hz = zLive();
-          $('cx').textContent = pl ? LIVE.pos.rx.toFixed(2)+'m' : '—'; $('cy').textContent = pl ? LIVE.pos.ry.toFixed(2)+'m' : '—';
+          // 보정(가운데 맞추기·반전) 뒤 값: 가운데 0, 오른쪽 +X, 앞(지도 위) +Y
+          const sg = v => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(2) + 'm';
+          $('cx').textContent = pl ? sg(S.x - ROOM/2) : '—'; $('cy').textContent = pl ? sg(ROOM/2 - S.y) : '—';   // 지도 점과 같이 부드럽게
           $('cz').textContent = hz ? S.z.toFixed(2)+'m' : '—'; $('vz').textContent = hz ? S.z.toFixed(2) : '—'; $('vb').textContent = '—';
           $('cx').classList.toggle('nodata', !pl); $('cy').classList.toggle('nodata', !pl); $('cz').classList.toggle('nodata', !hz);
           $('vz').classList.toggle('nodata', !hz); $('vb').classList.add('nodata');
