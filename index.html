@@ -327,6 +327,13 @@ html:not(.real) .ckey .zr{display:none}
 .sw[aria-checked="true"]{background:#14B8A6;box-shadow:0 0 12px -2px rgba(45,212,191,.7)}
 .sw[aria-checked="true"]::after{transform:translateX(22px)}
 .sysinfo{display:grid;grid-template-columns:110px minmax(0,1fr);gap:10px 12px;font-size:13px}
+.wflist{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.wflist li{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--bd2);border-radius:10px;font-size:13.5px;min-width:0}
+.wflist li b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}
+.wflist .tag{font-size:11.5px;color:var(--mu);border:1px solid var(--bd2);border-radius:999px;padding:2px 8px;white-space:nowrap}
+.wflist .tag.on{color:#2DD4BF;border-color:rgba(45,212,191,.5)}
+.wflist .ghost{min-height:32px;padding:4px 10px;font-size:12px}
+.wfmu{color:var(--mu);font-size:12.5px;margin-right:auto;align-self:center}
 .sysinfo dt{color:var(--mu)}.sysinfo dd{margin:0;color:var(--tx);font-family:var(--mono);font-size:12.5px}
 .vtitle{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:2px}
 .vtitle h2{margin:0;font-size:22px;font-weight:800;color:#fff}
@@ -879,6 +886,16 @@ html:not(.role-admin) #view-profile :is(input,select,textarea){border-color:tran
       <dt>AI 엔진</dt><dd id="sysAi">Claude</dd>
     </dl>
   </section>
+  <section class="glass panel" style="margin-top:18px" aria-labelledby="hWifi">
+    <div class="ph"><div class="tt"><div class="ico" style="background:rgba(56,189,248,.14);color:#38BDF8;border:1px solid rgba(56,189,248,.4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 8.8a15 15 0 0 1 20 0M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1"/></svg></div><div><h3 id="hWifi">보드 와이파이</h3><p>보드가 인터넷에 붙어 있을 때 새 와이파이를 미리 넣어 둡니다</p></div></div><button type="button" class="ghost" id="wfReload">새로고침</button></div>
+    <ul class="wflist" id="wfList"><li class="wfmu">불러오는 중…</li></ul>
+    <div class="fields" style="margin-top:14px">
+      <div class="f"><label for="wfSsid">와이파이 이름</label><input id="wfSsid" maxlength="32" autocomplete="off" spellcheck="false" placeholder="예: School_WiFi"></div>
+      <div class="f"><label for="wfPass">비밀번호</label><input id="wfPass" type="password" maxlength="64" autocomplete="new-password" placeholder="없으면 비워 두기"></div>
+    </div>
+    <span class="help" style="display:block;margin-top:8px">2.4GHz 와이파이만 됩니다. 비밀번호는 보드가 받자마자 Firebase에서 지워지고, 사이트에서는 다시 볼 수 없습니다. 추가한 와이파이는 지금 연결이 끊기거나 보드가 다시 켜질 때 쓰입니다.</span>
+    <div class="actions" style="margin-top:12px"><span class="wfmu" id="wfRes" role="status"></span><button type="button" class="ghost" id="wfRestart">보드 다시 시작</button><button type="button" class="primary" id="wfAdd">와이파이 추가</button></div>
+  </section>
   <div class="actions"><span class="saved" id="stSaved">✓ 저장되었습니다</span><button type="button" class="ghost" id="stReset">기본값</button><button type="button" class="primary" id="stSave">저장</button></div>
 </div>
 
@@ -1377,7 +1394,7 @@ window.SWAuth = (function(){
     ['live','log','profile','settings','users'].forEach(v => { $('view-'+v).hidden = v !== tab; });
     document.querySelectorAll('.nav button[data-go]').forEach(b => { if (b.dataset.go === tab) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); });
     if (tab === 'profile') fillProfileForm();
-    if (tab === 'settings') fillSettingsForm();
+    if (tab === 'settings'){ fillSettingsForm(); if (window.swWifiLoad && SWAuth.token()) window.swWifiLoad(); }
     if (tab === 'users') SWAuth.loadUsers();
     if (tab === 'live') requestAnimationFrame(fitAll);
     window.scrollTo({ top:0, behavior: reduce ? 'auto' : 'smooth' });
@@ -2412,6 +2429,72 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
     }catch(e){ log('[원격] 명령 전송 실패: ' + e.message, 'wn'); return false; }
   }
   const remoteAck = () => remoteCmd('ACK');
+
+  // ---- 보드 와이파이 (관리자): wifi/<노드> 에 명령을 쓰면 보드가 읽고 지운 뒤 wifiinfo/<노드> 에 결과를 올림 ----
+  const WF = { info: null, wait: 0, timer: 0 };
+  function wfRender(){
+    const ul = $('wfList'); if (!ul) return;
+    const i = WF.info, cur = LIVE.info && LIVE.info.ssid;
+    ul.textContent = '';
+    if (!i || !Array.isArray(i.list)){
+      const li = document.createElement('li'); li.className = 'wfmu';
+      li.textContent = i === false ? '목록을 못 불러왔습니다 (Firebase 규칙에 wifiinfo 추가했는지 확인)' : '아직 보드 정보가 없습니다 (새 펌웨어를 올리고 보드가 인터넷에 붙으면 나타납니다)';
+      ul.appendChild(li);
+    } else i.list.forEach(w => {
+      const li = document.createElement('li');
+      const b = document.createElement('b'); b.textContent = w.ssid; li.appendChild(b);
+      if (cur && cur === w.ssid){ const t = document.createElement('span'); t.className = 'tag on'; t.textContent = '연결 중'; li.appendChild(t); }
+      const t = document.createElement('span'); t.className = 'tag'; t.textContent = w.fixed ? '펌웨어' : '사이트에서 추가'; li.appendChild(t);
+      if (!w.fixed){
+        const d = document.createElement('button'); d.type = 'button'; d.className = 'ghost'; d.textContent = '삭제';
+        d.onclick = () => { if (confirm(`"${w.ssid}" 를 지울까요? 보드가 다시 시작됩니다 (몇 초 동안 감지 멈춤).`)) wfSend({ op:'del', ssid:w.ssid }); };
+        li.appendChild(d);
+      }
+      ul.appendChild(li);
+    });
+    const res = $('wfRes');
+    if (WF.wait) res.textContent = '보드에 보내는 중… (최대 10초)';
+    else if (i && i.res) res.textContent = `보드: ${i.res}${i.at ? ' · ' + new Date(i.at).toLocaleTimeString('ko-KR', { hour:'2-digit', minute:'2-digit', second:'2-digit' }) : ''}`;
+    else res.textContent = '';
+  }
+  async function wfLoad(){
+    try{
+      const r = await fetch(fbPath(`/wifiinfo/${FB.node}`));
+      WF.info = r.ok ? await r.json() : false;
+    }catch(e){ WF.info = false; }
+    wfRender();
+    return WF.info;
+  }
+  async function wfSend(cmd){
+    const before = WF.info && WF.info.at;
+    try{
+      const r = await fetch(fbPath(`/wifi/${FB.node}`), { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(cmd) });
+      if (!r.ok){ $('wfRes').textContent = `전송 실패 · HTTP ${r.status}${r.status === 401 ? ' (Firebase 규칙에 wifi 추가 필요)' : ''}`; return false; }
+    }catch(e){ $('wfRes').textContent = '전송 실패: ' + e.message; return false; }
+    log(`[원격] 와이파이 ${cmd.op === 'add' ? '추가' : cmd.op === 'del' ? '삭제' : '보드 재시작'} 명령 전송`, 'sys');
+    WF.wait = Date.now(); wfRender();
+    clearInterval(WF.timer);
+    WF.timer = setInterval(async () => {   // 보드가 결과를 올릴 때까지 확인 (보드는 3초마다 봄)
+      const i = await wfLoad();
+      if (i && i.at && i.at !== before){ WF.wait = 0; clearInterval(WF.timer); wfRender(); }
+      else if (Date.now() - WF.wait > 10000){
+        WF.wait = 0; clearInterval(WF.timer); wfRender();
+        $('wfRes').textContent = '보드가 아직 안 받았습니다 (보드가 꺼져 있거나 옛 펌웨어). 명령은 남아 있어서 보드가 붙으면 처리됩니다.';
+      }
+    }, 2000);
+    return true;
+  }
+  $('wfReload').addEventListener('click', wfLoad);
+  $('wfAdd').addEventListener('click', async () => {
+    const ssid = $('wfSsid').value.trim(), pass = $('wfPass').value;
+    const bytes = s => new TextEncoder().encode(s).length;
+    if (!ssid){ $('wfRes').textContent = '와이파이 이름을 넣어 주세요'; $('wfSsid').focus(); return; }
+    if (bytes(ssid) > 32){ $('wfRes').textContent = '와이파이 이름이 너무 깁니다 (32바이트까지)'; return; }
+    if (pass && (pass.length < 8 || bytes(pass) > 63)){ $('wfRes').textContent = '비밀번호는 8~63자입니다 (없으면 비워 두기)'; return; }
+    if (await wfSend({ op:'add', ssid, pass })){ $('wfPass').value = ''; }
+  });
+  $('wfRestart').addEventListener('click', () => { if (confirm('보드를 다시 시작할까요? 몇 초 동안 감지가 멈춥니다.')) wfSend({ op:'restart' }); });
+  window.swWifiLoad = wfLoad;
   // 원격 값이 끊기면(보드 꺼짐·Wi-Fi 끊김) 표시를 미연결로 되돌림
   setInterval(() => {
     if (LIVE.src === 'remote' && Date.now() - lastUpAt > 10000){
@@ -2445,7 +2528,10 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
       if (i.lux >= 0) bits.push(`조도 ${Math.round(i.lux)} lx`);
       bits.push(`설치 ${(+i.height).toFixed(1)}m · 임계 ${(+i.th).toFixed(2)}m`);
       if (zLive()) bits.push(`높이 Z ${LIVE.z.v.toFixed(2)}m`);
-      if (src === 'usb') bits.push(i.wifi ? 'Wi-Fi 연결 (원격 공유 중)' : 'Wi-Fi 없음 (이 PC에서만 보임)');
+      if (i.ssid){   // 새 펌웨어: 연결된 와이파이 이름 + 신호 세기
+        const r = +i.rssi || 0, q = !r ? '' : r > -60 ? ' 강함' : r > -72 ? ' 보통' : ' 약함';
+        bits.push(`📶 ${i.ssid}${q}${r ? ` (${r}dBm)` : ''}`);
+      } else if (src === 'usb') bits.push(i.wifi ? 'Wi-Fi 연결 (원격 공유 중)' : 'Wi-Fi 없음 (이 PC에서만 보임)');
       if (i.sim) bits.push('TEST 진행 중');
     }
     $('lvSub').textContent = src ? bits.join(' · ') || '데이터 기다리는 중…' : '보드가 Wi-Fi에 연결되면 자동으로 표시됩니다. 보드를 꽂은 PC에서는 [USB 레이더 연결]도 쓸 수 있습니다.';
