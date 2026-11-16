@@ -2512,12 +2512,23 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
         nu.appendChild(li);
       });
     }
-    $('wfNearAgo').textContent = i && i.scanAgo >= 0 && i.at ? `${Math.max(0, Math.round((Date.now() - i.at) / 1000 + i.scanAgo))}초 전에 찾음` : '';
+    WF.scanTime = i && i.scanAgo >= 0 && i.at ? i.at - i.scanAgo * 1000 : 0;   // 보드가 실제로 찾은 시각
+    wfAgo();
     const res = $('wfRes');
     if (WF.wait) res.textContent = '보드에 보내는 중… (최대 15초)';
     else if (i && i.res) res.textContent = `보드: ${i.res}${i.at ? ' · ' + new Date(i.at).toLocaleTimeString('ko-KR', { hour:'2-digit', minute:'2-digit', second:'2-digit' }) : ''}`;
     else res.textContent = '';
   }
+  // "N초 전에 찾음": 찾은 시각 기준으로 1초마다 다시 셈. 다시 찾는 중에는 "찾는 중…"
+  function wfAgo(){
+    const e = $('wfNearAgo'); if (!e) return;
+    if (WF.wait && WF.op === 'scan'){ e.textContent = '찾는 중…'; return; }
+    if (!WF.scanTime){ e.textContent = ''; return; }
+    const s = Math.max(0, Math.round((Date.now() - WF.scanTime) / 1000));
+    const at = new Date(WF.scanTime).toLocaleTimeString('ko-KR', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+    e.textContent = `${at}에 찾음 · ${s < 60 ? s + '초' : Math.floor(s / 60) + '분'} 전`;
+  }
+  setInterval(() => { const v = $('view-settings'); if (v && !v.hidden) wfAgo(); }, 1000);
   async function wfLoad(){
     try{
       const r = await fetch(fbPath(`/wifiinfo/${FB.node}`));
@@ -2533,7 +2544,7 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
       if (!r.ok){ $('wfRes').textContent = `전송 실패 · HTTP ${r.status}${r.status === 401 ? ' (Firebase 규칙에 wifi 추가 필요)' : ''}`; return false; }
     }catch(e){ $('wfRes').textContent = '전송 실패: ' + e.message; return false; }
     if (!quiet) log(`[원격] 와이파이 ${{ add:'추가', del:'삭제', use:'연결 변경', scan:'주변 찾기', restart:'보드 재시작' }[cmd.op] || cmd.op} 명령 전송`, 'sys');
-    WF.wait = Date.now(); wfRender();
+    WF.wait = Date.now(); WF.op = cmd.op; wfRender();
     clearInterval(WF.timer);
     const limit = cmd.op === 'use' ? 40000 : 15000;   // 와이파이를 바꾸면 다시 붙을 때까지 시간이 걸림
     WF.timer = setInterval(async () => {   // 보드가 결과를 올릴 때까지 확인 (보드는 3초마다 봄)
