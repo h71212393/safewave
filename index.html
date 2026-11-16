@@ -339,6 +339,8 @@ html:not(.real) .ckey .zr{display:none}
 .wfhd .ghost{min-height:30px;padding:3px 10px;font-size:12px}
 .wfhd .wfmu{margin-right:0}
 .wflist .ghost:disabled{opacity:.4;cursor:not-allowed}
+.wflist li.busy{opacity:.55}
+.ghost.armed{border-color:#FB7185;color:#FB7185;background:rgba(244,63,94,.12)}
 .wfi{width:20px;height:20px;flex:none;vertical-align:-4px}
 .wfi .bg{stroke:var(--bd2)}.wfi .on{stroke:#2DD4BF}.wfi .dot{fill:#2DD4BF}.wfi .dot.off{fill:var(--bd2)}
 .wfi.weak .on{stroke:#FBBF24}.wfi.weak .dot{fill:#FBBF24}
@@ -2462,6 +2464,17 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
   const wifiWord = r => !r ? '안 보임' : r > -55 ? '강함' : r > -67 ? '보통' : r > -78 ? '약함' : '매우 약함';
   window.swWifiIcon = wifiIcon; window.swWifiWord = wifiWord;
   const WF = { info: null, wait: 0, timer: 0 };
+  // 확인 창(confirm) 대신 "한 번 더 누르기" (앱 안 미리보기·웹뷰에서는 confirm 이 막혀서)
+  function twoStep(btn, armLabel, hint, act){
+    const orig = btn.textContent; let t = 0;
+    const reset = () => { clearTimeout(t); btn.dataset.armed = ''; btn.textContent = orig; btn.classList.remove('armed'); };
+    btn.onclick = () => {
+      if (btn.dataset.armed){ reset(); act(); return; }
+      btn.dataset.armed = '1'; btn.textContent = armLabel; btn.classList.add('armed');
+      $('wfRes').textContent = hint;
+      t = setTimeout(reset, 4000);
+    };
+  }
   const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
   function sigNode(r){
     const s = el('span'); s.style.display = 'contents';
@@ -2480,21 +2493,23 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
       if (!i.list.length) ul.appendChild(el('li', 'wfmu', '저장된 와이파이가 없습니다'));
       i.list.forEach(w => {
         const li = el('li'), cur = i.cur && i.cur === w.ssid;
-        li.appendChild(sigNode(w.rssi));
+        const sg = sigNode(w.rssi), db = el('span', 'wfdb', w.rssi ? `${wifiWord(w.rssi)} ${w.rssi}dBm` : '안 보임');
+        if (cur){ sg.dataset.live = '1'; db.dataset.live = '1'; }   // 연결된 것은 보드 상태값으로 실시간 갱신
+        li.appendChild(sg);
         li.appendChild(el('b', null, w.ssid));
-        li.appendChild(el('span', 'wfdb', w.rssi ? `${wifiWord(w.rssi)} ${w.rssi}dBm` : '안 보임'));
+        li.appendChild(db);
         if (cur) li.appendChild(el('span', 'tag on', '연결 중'));
         if (i.pref === w.ssid) li.appendChild(el('span', 'tag on', '고른 와이파이'));
         li.appendChild(el('span', 'tag', w.src === 'site' ? '사이트에서 추가' : w.src === 'fw+site' ? '펌웨어 · 비번 변경' : '펌웨어'));
         if (!cur){
           const u = el('button', 'ghost', '연결'); u.type = 'button';
           u.title = w.rssi ? '' : '지금 주변에서 안 보입니다';
-          u.onclick = () => { if (confirm(`"${w.ssid}" 로 바꿀까요? 몇 초 동안 원격 화면이 끊기고, 안 되면 원래 와이파이로 돌아옵니다.`)) wfSend({ op:'use', ssid:w.ssid }); };
+          twoStep(u, '바꾸기 확인', `한 번 더 누르면 "${w.ssid}" 로 바꿉니다. 몇 초 동안 원격 화면이 끊기고, 안 되면 원래 와이파이로 돌아옵니다.`, () => wfSend({ op:'use', ssid:w.ssid }, false, u));
           li.appendChild(u);
         }
         const d = el('button', 'ghost', '삭제'); d.type = 'button';
         if (cur){ d.disabled = true; d.title = '지금 연결된 와이파이는 다른 와이파이로 바꾼 뒤 지울 수 있습니다'; }
-        d.onclick = () => { if (confirm(`"${w.ssid}" 를 지울까요?${w.src !== 'site' ? '\n(펌웨어에 적힌 와이파이는 숨겨지고, 같은 이름으로 다시 추가하면 살아납니다)' : ''}`)) wfSend({ op:'del', ssid:w.ssid }); };
+        twoStep(d, '정말 삭제', `한 번 더 누르면 "${w.ssid}" 를 지웁니다.${w.src !== 'site' ? ' 펌웨어에 적힌 와이파이는 숨겨지고, 같은 이름으로 다시 추가하면 살아납니다.' : ''}`, () => wfSend({ op:'del', ssid:w.ssid }, false, d));
         li.appendChild(d);
         ul.appendChild(li);
       });
@@ -2515,7 +2530,7 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
     WF.scanTime = i && i.scanAgo >= 0 && i.at ? i.at - i.scanAgo * 1000 : 0;   // 보드가 실제로 찾은 시각
     wfAgo();
     const res = $('wfRes');
-    if (WF.wait) res.textContent = '보드에 보내는 중… (최대 15초)';
+    if (WF.wait && WF.op !== 'scan') res.textContent = WF.op === 'use' ? '와이파이 바꾸는 중… (최대 40초, 그동안 원격 화면 끊김)' : '보드에 보내는 중… (최대 15초)';
     else if (i && i.res) res.textContent = `보드: ${i.res}${i.at ? ' · ' + new Date(i.at).toLocaleTimeString('ko-KR', { hour:'2-digit', minute:'2-digit', second:'2-digit' }) : ''}`;
     else res.textContent = '';
   }
@@ -2528,34 +2543,75 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
     const at = new Date(WF.scanTime).toLocaleTimeString('ko-KR', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
     e.textContent = `${at}에 찾음 · ${s < 60 ? s + '초' : Math.floor(s / 60) + '분'} 전`;
   }
-  setInterval(() => { const v = $('view-settings'); if (v && !v.hidden) wfAgo(); }, 1000);
+  // 연결된 와이파이 신호: 보드가 0.3~2초마다 보내는 상태값(rssi)으로 바로 바꿈
+  function wfLive(){
+    const li = LIVE.info, i = WF.info;
+    if (!li || !li.ssid || !i || li.ssid !== i.cur || !+li.rssi) return;
+    const r = +li.rssi;
+    document.querySelectorAll('#wfList [data-live]').forEach(e => {
+      if (e.tagName === 'SPAN' && e.classList.contains('wfdb')) e.textContent = `${wifiWord(r)} ${r}dBm`;
+      else e.innerHTML = wifiIcon(r);
+    });
+  }
+  let wfAutoScanAt = 0;
+  setInterval(() => {
+    const v = $('view-settings'); if (!v || v.hidden) return;
+    wfAgo(); wfLive();
+    // 화면을 보고 있으면 30초마다 주변 와이파이 신호도 새로 찾기
+    if (WF.info && WF.info.list && !WF.wait && WF.scanTime && Date.now() - WF.scanTime > 30000 && Date.now() - wfAutoScanAt > 30000){
+      wfAutoScanAt = Date.now(); wfSend({ op:'scan' }, true);
+    }
+  }, 1000);
+  // 결과 받기: 설정 화면을 열면 wifiinfo 를 실시간 구독 (보드가 쓰는 즉시 도착). 끊기면 3초마다 확인으로 대신함
+  function wfApply(info){
+    WF.info = info;
+    const P = WF.pend;
+    if (P){
+      const i = info;
+      const done = i && i.at && i.at !== P.before && !(P.op === 'use' && /^바꾸는 중/.test(i.res || ''));
+      if (done || Date.now() - P.start > P.limit){
+        WF.pend = null; WF.wait = 0;
+        if (!done) setTimeout(() => { $('wfRes').textContent = '보드가 아직 안 받았습니다 (보드가 꺼져 있거나 옛 펌웨어). 명령은 남아 있어서 보드가 붙으면 처리됩니다.'; }, 0);
+      }
+    }
+    wfRender();
+  }
+  function wfStream(){
+    if (WF.es || !SWAuth.token()) return;
+    const es = new EventSource(fbPath(`/wifiinfo/${FB.node}`));
+    WF.es = es;
+    const on = e => {
+      let m; try{ m = JSON.parse(e.data); }catch(_){ return; }
+      if (m.path === '/') wfApply(m.data);
+      else wfLoad();
+    };
+    es.addEventListener('put', on); es.addEventListener('patch', on);
+    es.addEventListener('auth_revoked', () => { es.close(); WF.es = null; SWAuth.refreshNow && SWAuth.refreshNow(); });
+    es.onerror = () => { if (es.readyState === 2){ WF.es = null; } };
+  }
+  setInterval(() => { if (WF.pend && (!WF.es || WF.es.readyState !== 1)) wfLoad(); else if (WF.pend) wfApply(WF.info); }, 3000);   // 구독이 안 될 때 대비
   async function wfLoad(){
+    let info;
     try{
       const r = await fetch(fbPath(`/wifiinfo/${FB.node}`));
-      WF.info = r.ok ? await r.json() : false;
-    }catch(e){ WF.info = false; }
-    wfRender();
+      info = r.ok ? await r.json() : false;
+    }catch(e){ info = false; }
+    wfApply(info);
     return WF.info;
   }
-  async function wfSend(cmd, quiet){
+  async function wfSend(cmd, quiet, btn){
     const before = WF.info && WF.info.at;
+    if (btn){ btn.disabled = true; btn.textContent = { del:'삭제 중…', use:'바꾸는 중…' }[cmd.op] || '보내는 중…'; const li = btn.closest('li'); if (li) li.classList.add('busy'); }
     try{
-      const r = await fetch(fbPath(`/wifi/${FB.node}`), { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(cmd) });
-      if (!r.ok){ $('wfRes').textContent = `전송 실패 · HTTP ${r.status}${r.status === 401 ? ' (Firebase 규칙에 wifi 추가 필요)' : ''}`; return false; }
-    }catch(e){ $('wfRes').textContent = '전송 실패: ' + e.message; return false; }
+      // ACK·TEST 와 같은 cmd 아래에 둬서 보드가 1초마다 한 번에 확인
+      const r = await fetch(fbPath(`/cmd/${FB.node}_wifi`), { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(cmd) });
+      if (!r.ok){ $('wfRes').textContent = `전송 실패 · HTTP ${r.status}`; wfRender(); return false; }
+    }catch(e){ $('wfRes').textContent = '전송 실패: ' + e.message; wfRender(); return false; }
     if (!quiet) log(`[원격] 와이파이 ${{ add:'추가', del:'삭제', use:'연결 변경', scan:'주변 찾기', restart:'보드 재시작' }[cmd.op] || cmd.op} 명령 전송`, 'sys');
-    WF.wait = Date.now(); WF.op = cmd.op; wfRender();
-    clearInterval(WF.timer);
-    const limit = cmd.op === 'use' ? 40000 : 15000;   // 와이파이를 바꾸면 다시 붙을 때까지 시간이 걸림
-    WF.timer = setInterval(async () => {   // 보드가 결과를 올릴 때까지 확인 (보드는 3초마다 봄)
-      const i = await wfLoad();
-      const done = i && i.at && i.at !== before && !(cmd.op === 'use' && /^바꾸는 중/.test(i.res || ''));
-      if (done){ WF.wait = 0; clearInterval(WF.timer); wfRender(); }
-      else if (Date.now() - WF.wait > limit){
-        WF.wait = 0; clearInterval(WF.timer); wfRender();
-        if (!(i && i.at !== before)) $('wfRes').textContent = '보드가 아직 안 받았습니다 (보드가 꺼져 있거나 옛 펌웨어). 명령은 남아 있어서 보드가 붙으면 처리됩니다.';
-      }
-    }, 2000);
+    WF.wait = Date.now(); WF.op = cmd.op;
+    WF.pend = { op: cmd.op, before, start: Date.now(), limit: cmd.op === 'use' ? 40000 : 15000 };   // 와이파이를 바꾸면 다시 붙을 때까지 시간이 걸림
+    if (!btn) wfRender(); else { wfAgo(); $('wfRes').textContent = cmd.op === 'use' ? '와이파이 바꾸는 중… (최대 40초, 그동안 원격 화면 끊김)' : '보드에 보내는 중…'; }
+    wfStream();
     return true;
   }
   $('wfReload').addEventListener('click', () => wfSend({ op:'scan' }, true));
@@ -2574,8 +2630,8 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
     if (pass && (pass.length < 8 || bytes(pass) > 63)){ $('wfRes').textContent = '비밀번호는 8~63자입니다 (없으면 비워 두기)'; return; }
     if (await wfSend({ op:'add', ssid, pass })){ $('wfPass').value = ''; $('wfPass').type = 'password'; $('wfEye').setAttribute('aria-pressed', 'false'); }
   });
-  $('wfRestart').addEventListener('click', () => { if (confirm('보드를 다시 시작할까요? 몇 초 동안 감지가 멈춥니다.')) wfSend({ op:'restart' }); });
-  window.swWifiLoad = async () => { await wfLoad(); if (WF.info && WF.info.list) wfSend({ op:'scan' }, true); };   // 화면 열 때 주변도 새로 찾기
+  twoStep($('wfRestart'), '정말 다시 시작', '한 번 더 누르면 보드를 다시 시작합니다. 몇 초 동안 감지가 멈춥니다.', () => wfSend({ op:'restart' }));
+  window.swWifiLoad = async () => { wfStream(); await wfLoad(); if (WF.info && WF.info.list) wfSend({ op:'scan' }, true); };   // 화면 열 때 주변도 새로 찾기
   // 원격 값이 끊기면(보드 꺼짐·Wi-Fi 끊김) 표시를 미연결로 되돌림
   setInterval(() => {
     if (LIVE.src === 'remote' && Date.now() - lastUpAt > 10000){
