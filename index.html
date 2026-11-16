@@ -332,6 +332,11 @@ html:not(.real) .ckey .zr{display:none}
 .wflist li b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}
 .wflist .tag{font-size:11.5px;color:var(--mu);border:1px solid var(--bd2);border-radius:999px;padding:2px 8px;white-space:nowrap}
 .wflist .tag.on{color:#2DD4BF;border-color:rgba(45,212,191,.5)}
+.wflist .tag.cur{color:#38BDF8;border-color:rgba(56,189,248,.55);background:rgba(56,189,248,.12)}
+.wflist .tag.going{color:#FBBF24;border-color:rgba(251,191,36,.55);background:rgba(251,191,36,.12);animation:wfPulse 1.2s ease-in-out infinite}
+.wflist li.going{border-color:rgba(251,191,36,.45)}
+@keyframes wfPulse{50%{opacity:.45}}
+@media (prefers-reduced-motion:reduce){.wflist .tag.going{animation:none}}
 .wflist .ghost{min-height:32px;padding:4px 10px;font-size:12px}
 .wfmu{color:var(--mu);font-size:12.5px;margin-right:auto;align-self:center}
 .wfhd{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:13px;color:var(--tx2)}
@@ -907,7 +912,7 @@ html:not(.role-admin) #view-profile :is(input,select,textarea){border-color:tran
   </section>
   <section class="glass panel" style="margin-top:18px" aria-labelledby="hWifi">
     <div class="ph"><div class="tt"><div class="ico" style="background:rgba(56,189,248,.14);color:#38BDF8;border:1px solid rgba(56,189,248,.4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 8.8a15 15 0 0 1 20 0M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1"/></svg></div><div><h3 id="hWifi">보드 와이파이</h3><p>저장된 와이파이 중 골라서 연결하고, 새 와이파이를 넣어 둡니다</p></div></div><button type="button" class="ghost" id="wfReload">주변 다시 찾기</button></div>
-    <div class="wfhd"><b>저장된 와이파이</b><button type="button" class="ghost" id="wfAuto" hidden>자동 선택으로</button></div>
+    <div class="wfhd"><b>저장된 와이파이</b><span class="wfmu">끊기면 신호 센 곳에 자동 연결</span></div>
     <ul class="wflist" id="wfList"><li class="wfmu">불러오는 중…</li></ul>
     <div class="wfhd" style="margin-top:14px"><b>주변 와이파이</b><span class="wfmu" id="wfNearAgo"></span></div>
     <ul class="wflist" id="wfNear"><li class="wfmu">—</li></ul>
@@ -2485,7 +2490,6 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
     const ul = $('wfList'), nu = $('wfNear'); if (!ul) return;
     const i = WF.info;
     ul.textContent = ''; nu.textContent = '';
-    $('wfAuto').hidden = !(i && i.pref);
     if (!i || !Array.isArray(i.list)){
       ul.appendChild(el('li', 'wfmu', i === false ? '목록을 못 불러왔습니다 (Firebase 규칙에 wifiinfo 추가했는지 확인)' : '아직 보드 정보가 없습니다 (새 펌웨어를 올리고 보드가 인터넷에 붙으면 나타납니다)'));
       nu.appendChild(el('li', 'wfmu', '—'));
@@ -2498,10 +2502,11 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
         li.appendChild(sg);
         li.appendChild(el('b', null, w.ssid));
         li.appendChild(db);
-        if (cur) li.appendChild(el('span', 'tag on', '연결 중'));
-        if (i.pref === w.ssid) li.appendChild(el('span', 'tag on', '고른 와이파이'));
+        const going = !cur && WF.pend && WF.pend.op === 'use' && WF.pend.ssid === w.ssid;   // 바꾸는 중인 대상
+        if (cur) li.appendChild(el('span', 'tag cur', '연결됨'));
+        if (going){ li.classList.add('going'); li.appendChild(el('span', 'tag going', '연결 중…')); }
         li.appendChild(el('span', 'tag', w.src === 'site' ? '사이트에서 추가' : w.src === 'fw+site' ? '펌웨어 · 비번 변경' : '펌웨어'));
-        if (!cur){
+        if (!cur && !going){
           const u = el('button', 'ghost', '연결'); u.type = 'button';
           u.title = w.rssi ? '' : '지금 주변에서 안 보입니다';
           twoStep(u, '바꾸기 확인', `한 번 더 누르면 "${w.ssid}" 로 바꿉니다. 몇 초 동안 원격 화면이 끊기고, 안 되면 원래 와이파이로 돌아옵니다.`, () => wfSend({ op:'use', ssid:w.ssid }, false, u));
@@ -2568,7 +2573,8 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
     const P = WF.pend;
     if (P){
       const i = info;
-      const done = i && i.at && i.at !== P.before && !(P.op === 'use' && /^바꾸는 중/.test(i.res || ''));
+      // 바꾸기는 "그 와이파이에 붙음" 또는 "실패" 가 올 때까지 (중간의 주변 찾기 결과 등은 무시)
+      const done = i && i.at && i.at !== P.before && (P.op !== 'use' || i.cur === P.ssid || /실패|이미 연결됨/.test(i.res || ''));
       if (done || Date.now() - P.start > P.limit){
         WF.pend = null; WF.wait = 0;
         if (!done) setTimeout(() => { $('wfRes').textContent = '보드가 아직 안 받았습니다 (보드가 꺼져 있거나 옛 펌웨어). 명령은 남아 있어서 보드가 붙으면 처리됩니다.'; }, 0);
@@ -2609,13 +2615,12 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
     }catch(e){ $('wfRes').textContent = '전송 실패: ' + e.message; wfRender(); return false; }
     if (!quiet) log(`[원격] 와이파이 ${{ add:'추가', del:'삭제', use:'연결 변경', scan:'주변 찾기', restart:'보드 재시작' }[cmd.op] || cmd.op} 명령 전송`, 'sys');
     WF.wait = Date.now(); WF.op = cmd.op;
-    WF.pend = { op: cmd.op, before, start: Date.now(), limit: cmd.op === 'use' ? 40000 : 15000 };   // 와이파이를 바꾸면 다시 붙을 때까지 시간이 걸림
-    if (!btn) wfRender(); else { wfAgo(); $('wfRes').textContent = cmd.op === 'use' ? '와이파이 바꾸는 중… (최대 40초, 그동안 원격 화면 끊김)' : '보드에 보내는 중…'; }
+    WF.pend = { op: cmd.op, ssid: cmd.ssid, before, start: Date.now(), limit: cmd.op === 'use' ? 40000 : 15000 };   // 와이파이를 바꾸면 다시 붙을 때까지 시간이 걸림
+    if (!btn || cmd.op === 'use') wfRender(); else { wfAgo(); $('wfRes').textContent = cmd.op === 'use' ? '와이파이 바꾸는 중… (최대 40초, 그동안 원격 화면 끊김)' : '보드에 보내는 중…'; }
     wfStream();
     return true;
   }
   $('wfReload').addEventListener('click', () => wfSend({ op:'scan' }, true));
-  $('wfAuto').addEventListener('click', () => wfSend({ op:'use', ssid:'' }));
   $('wfEye').addEventListener('click', () => {
     const p = $('wfPass'), show = p.type === 'password';
     p.type = show ? 'text' : 'password';
