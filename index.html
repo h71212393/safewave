@@ -327,6 +327,13 @@ html:not(.real) .ckey .zr{display:none}
 .sw[aria-checked="true"]{background:#14B8A6;box-shadow:0 0 12px -2px rgba(45,212,191,.7)}
 .sw[aria-checked="true"]::after{transform:translateX(22px)}
 .sysinfo{display:grid;grid-template-columns:110px minmax(0,1fr);gap:10px 12px;font-size:13px}
+.otabar{height:10px;border-radius:99px;background:rgba(148,163,184,.18);overflow:hidden;margin-top:12px}
+.otabar-in{height:100%;width:0;background:linear-gradient(90deg,#A78BFA,#2DD4BF);transition:width .4s}
+.calbox{border:1px dashed var(--bd2);border-radius:12px;padding:12px}
+.calrow{display:flex;gap:8px;flex-wrap:wrap}
+.calrow input{flex:1;min-width:120px}
+.calres{margin-top:10px;font-size:13.5px;line-height:1.6;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.calres b{font-size:16px;color:#5EEAD4}
 .wflist{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .wflist li{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--bd2);border-radius:10px;font-size:13.5px;min-width:0}
 .wflist li b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}
@@ -532,6 +539,8 @@ html:not(.role-admin) #view-profile :is(input,select,textarea){border-color:tran
 .rtag.member{background:rgba(148,163,184,.18);color:var(--tx2)}
 .rtag.admin{background:rgba(45,212,191,.2);color:#5EEAD4}
 .rtag.rejected{background:rgba(244,63,94,.16);color:#FDA4AF}
+.rtag.kicked{background:rgba(244,63,94,.28);color:#FECDD3}
+.utable .ghost.kick{border-color:rgba(251,113,133,.45);color:#FDA4AF}
 @media (max-width:760px){.utable thead{display:none}.utable tr{display:block;padding:8px 0;border-bottom:1px solid var(--bd)}.utable td{display:block;border:0;padding:4px 2px}.utable td.acts{justify-content:flex-start}}
 </style>
 </head>
@@ -885,10 +894,19 @@ html:not(.role-admin) #view-profile :is(input,select,textarea){border-color:tran
     <section class="glass panel" aria-labelledby="hDet">
       <div class="ph"><div class="tt"><div class="ico" style="background:rgba(45,212,191,.16);color:#2DD4BF;border:1px solid rgba(45,212,191,.4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><path d="M12 12l6-6"/></svg></div><div><h3 id="hDet">감지 설정</h3><p>레이더 설치 및 낙상 판정 기준</p></div></div></div>
       <div class="fields">
-        <div class="f full"><label for="sInst">레이더 설치 높이</label><div class="range"><input type="range" id="sInst" min="2.2" max="3.0" step="0.1"><output id="oInst" for="sInst"></output></div><span class="help">천장 또는 벽 상단, 감지면이 아래를 향하도록 설치</span></div>
+        <div class="f full"><label for="sInst">레이더 설치 높이 (수동)</label><div class="range"><input type="range" id="sInst" min="1.8" max="4.0" step="0.05"><output id="oInst" for="sInst"></output></div><span class="help">바닥에서 레이더까지 높이. 저장하면 보드·레이더에 바로 적용됩니다 <span id="instBoard"></span></span></div>
+        <div class="f full calbox">
+          <label for="calH">설치 높이 자동 측정</label>
+          <div class="calrow">
+            <input id="calH" type="number" inputmode="decimal" min="100" max="210" step="1" placeholder="내 키 (cm)" aria-describedby="calHelp">
+            <button type="button" class="ghost" id="calGo">레이더 아래 서서 측정</button>
+          </div>
+          <span class="help" id="calHelp">레이더 바로 아래에 똑바로 서서 누르세요. 5초 동안 머리까지 거리를 재서 (거리 + 키)로 설치 높이를 계산합니다.</span>
+          <div class="calres" id="calRes" role="status" hidden></div>
+        </div>
         <div class="f full"><label for="sTh">낙상 판정 높이 (Z 임계값)</label><div class="range"><input type="range" id="sTh" min="0.3" max="0.8" step="0.05"><output id="oTh" for="sTh"></output></div><span class="help">대상자 높이가 이 값 아래로 떨어지면 1단계 이상 징후로 판정</span></div>
         <div class="f full"><label for="sGr">유예 시간</label><div class="range"><input type="range" id="sGr" min="10" max="15" step="1"><output id="oGr" for="sGr"></output></div><span class="help">음성 안내 후 반응을 기다리는 시간</span></div>
-        <div class="f full"><label for="sSens">감지 민감도</label><select id="sSens"><option>낮음</option><option>보통</option><option>높음</option></select></div>
+        <div class="f full"><label for="sSens">감지 민감도</label><select id="sSens"><option>낮음</option><option>보통</option><option>높음</option></select><span class="help">저장하면 보드·레이더에 적용되고 모든 화면에 같이 바뀝니다 <span id="sensBoard"></span></span></div>
       </div>
     </section>
     <section class="glass panel" aria-labelledby="hNoti">
@@ -921,7 +939,20 @@ html:not(.role-admin) #view-profile :is(input,select,textarea){border-color:tran
       <div class="f"><label for="wfPass">비밀번호</label><div class="pwbox"><input id="wfPass" type="password" maxlength="64" autocomplete="new-password" placeholder="없으면 비워 두기"><button type="button" class="pweye" id="wfEye" aria-label="비밀번호 보기" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></div></div>
     </div>
     <span class="help" style="display:block;margin-top:8px">2.4GHz 와이파이만 됩니다. 이미 있는 이름을 다시 넣으면 비밀번호가 바뀝니다. 비밀번호는 보드가 받자마자 Firebase에서 지워지고, 사이트에서는 다시 볼 수 없습니다.</span>
-    <div class="actions" style="margin-top:12px"><span class="wfmu" id="wfRes" role="status"></span><button type="button" class="ghost" id="wfRestart">보드 다시 시작</button><button type="button" class="primary" id="wfAdd">와이파이 추가</button></div>
+    <div class="actions" style="margin-top:12px" id="wfActs"><span class="wfmu" id="wfRes" role="status"></span><button type="button" class="ghost" id="wfRestart">보드 다시 시작</button><button type="button" class="primary" id="wfAdd">와이파이 추가</button></div>
+  </section>
+  <section class="glass panel" style="margin-top:18px" aria-labelledby="hOta">
+    <div class="ph"><div class="tt"><div class="ico" style="background:rgba(167,139,250,.14);color:#A78BFA;border:1px solid rgba(167,139,250,.4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg></div><div><h3 id="hOta">펌웨어 무선 업데이트</h3><p>USB 없이 인터넷으로 보드 펌웨어를 바꿉니다</p></div></div></div>
+    <dl class="sysinfo">
+      <dt>지금 펌웨어</dt><dd id="otaCur">—</dd>
+      <dt>업데이트 상태</dt><dd id="otaSt">—</dd>
+    </dl>
+    <div class="otabar" id="otaBarBox" hidden><div class="otabar-in" id="otaBar"></div></div>
+    <div class="fields" style="margin-top:14px">
+      <div class="f full"><label for="otaFile">새 펌웨어 파일 (.bin)</label><input id="otaFile" type="file" accept=".bin,application/octet-stream"></div>
+    </div>
+    <span class="help" style="display:block;margin-top:8px">아두이노 IDE의 <b>스케치 → 컴파일된 바이너리 내보내기</b>로 만든 <code>SafeWave_Node.ino.bin</code> 을 고르세요 (merged·bootloader 파일 말고). 받는 동안에도 감지는 계속되고, 실패하면 지금 펌웨어 그대로 동작합니다. 파일에는 와이파이 비밀번호가 들어 있어서 관리자만 볼 수 있게 올리고, 끝나면 지웁니다.</span>
+    <div class="actions" style="margin-top:12px"><span class="wfmu" id="otaRes" role="status"></span><button type="button" class="primary" id="otaGo" disabled>업로드하고 업데이트</button></div>
   </section>
   <div class="actions"><span class="saved" id="stSaved">✓ 저장되었습니다</span><button type="button" class="ghost" id="stReset">기본값</button><button type="button" class="primary" id="stSave">저장</button></div>
 </div>
@@ -994,7 +1025,7 @@ window.SWAuth = (function(){
   const $a = id => document.getElementById(id);
   const root = document.documentElement;
   const LSK = 'sw-auth';
-  let sess = null, me = null, joinName = '', refreshT = null, pendT = null;
+  let sess = null, me = null, joinName = '', refreshT = null, pendT = null, roleT = null;
   let readyRes; const ready = new Promise(r => readyRes = r);
   const onRefresh = [];
 
@@ -1086,9 +1117,20 @@ window.SWAuth = (function(){
       $a('uRole').classList.toggle('adm', role === 'admin');
       scheduleRefresh();
       if (role === 'admin'){ loadUsers(); clearInterval(pendT); pendT = setInterval(loadUsers, 60000); }
+      // 이용 중에 추방·이용 중지되면 30초 안에 화면을 닫음
+      clearInterval(roleT);
+      roleT = setInterval(async () => {
+        try{
+          const m = await db('GET', '/users/' + sess.uid);
+          const r = m && m.role;
+          if (r !== 'admin' && r !== 'member'){ clearInterval(roleT); me = m || { name: me.name, role: 'kicked' }; root.classList.remove('authed', 'role-admin'); apply(); }
+        }catch(e){}
+      }, 30000);
       readyRes();
     } else if (role === 'rejected'){
       showWait(`<b>${esc(me.name)}</b> 님의 가입 신청이 거절되었습니다.<br>관리자에게 문의해 주세요.`);
+    } else if (role === 'kicked'){
+      showWait(`<b>${esc(me.name)}</b> 님은 관리자에 의해 <b>추방</b>되어 더 이상 이용할 수 없습니다.<br>관리자에게 문의해 주세요.`);
     } else {
       showWait(`<b>${esc(me.name)}</b> 님, 가입 신청이 접수되었습니다.<br>관리자가 승인하면 이용할 수 있습니다.<br><small style="color:var(--mu)">${esc(sess.email)}</small>`);
     }
@@ -1105,7 +1147,7 @@ window.SWAuth = (function(){
   }
 
   // ---------- 회원 관리 (관리자) ----------
-  const ROLE_TX = { pending: '승인 대기', member: '보호자', admin: '관리자', rejected: '거절됨' };
+  const ROLE_TX = { pending: '승인 대기', member: '보호자', admin: '관리자', rejected: '거절됨', kicked: '추방됨' };
   let users = {};
   async function loadUsers(){
     try{ users = (await db('GET', '/users')) || {}; }catch(e){ $a('uBody').innerHTML = `<tr><td colspan="5" style="color:#FDA4AF">${esc(errMsg(e))}</td></tr>`; return; }
@@ -1114,7 +1156,7 @@ window.SWAuth = (function(){
     renderUsers();
   }
   function renderUsers(){
-    const order = { pending: 0, admin: 1, member: 2, rejected: 3 };
+    const order = { pending: 0, admin: 1, member: 2, rejected: 3, kicked: 4 };
     const list = Object.keys(users).map(uid => Object.assign({ uid }, users[uid])).sort((a,b) => (order[a.role] ?? 9) - (order[b.role] ?? 9) || (b.at || 0) - (a.at || 0));
     if (!list.length){ $a('uBody').innerHTML = '<tr><td colspan="5" style="color:var(--mu)">가입한 회원이 없습니다.</td></tr>'; return; }
     $a('uBody').innerHTML = list.map(u => {
@@ -1126,6 +1168,8 @@ window.SWAuth = (function(){
         if (u.role === 'pending') acts += btn('rejected', '거절');
         if (u.role === 'member') acts += btn('admin', '관리자로') + btn('rejected', '이용 중지');
         if (u.role === 'admin') acts += btn('member', '보호자로');
+        if (u.role === 'member' || u.role === 'admin' || u.role === 'rejected') acts += btn('kicked', '추방', 'kick');
+        if (u.role === 'kicked') acts += btn('member', '복구 (보호자로)', 'go');
       } else acts = '<span style="color:var(--mu);font-size:12px">나</span>';
       return `<tr><td><b>${esc(u.name || '-')}</b></td><td>${esc(u.email || '-')}</td><td><span class="rtag ${esc(u.role)}">${esc(ROLE_TX[u.role] || u.role || '-')}</span></td>`
         + `<td style="font-family:var(--mono);font-size:12px;color:var(--mu)">${d ? d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0') : '-'}</td><td class="acts">${acts}</td></tr>`;
@@ -1166,8 +1210,22 @@ window.SWAuth = (function(){
   $a('uReload').onclick = loadUsers;
   $a('uBody').addEventListener('click', async e => {
     const b = e.target.closest('[data-ua]'); if (!b) return;
+    const u = users[b.dataset.uid] || {};
+    // 추방은 한 번 더 눌러야 실행 (실수 방지 · 확인 창은 앱 안 미리보기에서 막혀서 버튼으로)
+    if (b.dataset.ua === 'kicked' && !b.dataset.armed){
+      b.dataset.armed = '1'; b.textContent = '정말 추방'; b.classList.add('armed');
+      setTimeout(() => { if (b.isConnected){ b.dataset.armed = ''; b.textContent = '추방'; b.classList.remove('armed'); } }, 4000);
+      return;
+    }
     b.disabled = true;
-    try{ await db('PATCH', '/users/' + b.dataset.uid, { role: b.dataset.ua }); await loadUsers(); }
+    try{
+      await db('PATCH', '/users/' + b.dataset.uid, { role: b.dataset.ua });
+      if (window.swLogShared){
+        const tx = { member: '보호자로 변경', admin: '관리자로 변경', rejected: '이용 중지', kicked: '추방' }[b.dataset.ua] || b.dataset.ua;
+        window.swLogShared(`회원 ${u.name || u.email || ''}: ${u.role === 'kicked' && b.dataset.ua === 'member' ? '추방 해제 (보호자로 복구)' : tx}`, b.dataset.ua === 'kicked' ? 'wn' : 'sys');
+      }
+      await loadUsers();
+    }
     catch(err){ alert(errMsg(err)); b.disabled = false; }
   });
 
@@ -1261,11 +1319,15 @@ window.SWAuth = (function(){
   });
   // 보드가 한 번에 묶어 보낸 높이 값들(zs: [몇ms전, 높이])을 실제 잰 시각 순서로 쌓아 두고, 조금 늦게 이어서 재생
   const ZB = { buf: [], gap: 700, lastAt: 0, lastTs: null };
+  const CAL = { on: false, buf: [], boardH: null, boardT: null, boardS: null };
+  // 감지 민감도 ↔ 레이더 값 (레이더는 3~10, 클수록 둔감)
+  const SENS_VAL = { '높음': 3, '보통': 5, '낮음': 8 };
+  const sensWord = v => v <= 4 ? '높음' : v <= 6 ? '보통' : '낮음';   // 설치 높이 자동 측정용 (레이더~머리 거리 원본)
   function addZs(i){
     if (!Array.isArray(i.zs) || !i.zs.length || i.ts === ZB.lastTs) return;
     ZB.lastTs = i.ts;
     const now = Date.now();
-    i.zs.forEach(s => { const a = +s[0], z = +s[1]; if (isFinite(a) && isFinite(z)) ZB.buf.push({ t: now - a, z: toFloor(z) }); });
+    i.zs.forEach(s => { const a = +s[0], z = +s[1]; if (isFinite(a) && isFinite(z)){ ZB.buf.push({ t: now - a, z: toFloor(z) }); if (CAL.on) CAL.buf.push(z); } });   // CAL: 자동 측정 중이면 거리 원본도 모음
     ZB.buf.sort((a,b) => a.t - b.t);
     while (ZB.buf.length && now - ZB.buf[0].t > 15000) ZB.buf.shift();
     // 튀는 값 거르기: 직전 2.5초 안에서 "두 번째로 높은 값"으로 그림 (11-16 기록으로 시험: 2초는 물건 값에 가끔 지고, 2.5초는 안 짐)
@@ -1296,7 +1358,18 @@ window.SWAuth = (function(){
   }
   function setPos(i){
     if (i == null) return;
-    if (+i.height >= 1 && +i.height <= 4 && +i.height !== RADAR_H){ RADAR_H = +i.height; ZH.dirty = true; }
+    if (+i.height >= 1 && +i.height <= 4.5 && +i.height !== CAL.boardH){
+      CAL.boardH = +i.height;
+      if (RADAR_H !== CAL.boardH){ RADAR_H = CAL.boardH; ZH.dirty = true; }
+      // 보드 값이 기준: 화면의 설치 높이도 보드 값으로 맞춤 (저장 눌렀을 때 엉뚱한 값이 보드로 가지 않게)
+      if (Math.abs((+C.inst || 0) - RADAR_H) > 0.005){ C.inst = RADAR_H; store.set('sw-settings', C); $('sInst').value = RADAR_H; syncOutputs(); if (draftSet) draftSet.inst = RADAR_H; }
+    }
+    if ($('instBoard')) $('instBoard').textContent = `· 지금 보드: ${RADAR_H.toFixed(2)}m`;
+    // 낙상 판정 높이·민감도도 보드 값이 기준 (새 펌웨어가 th·sens 를 보냄)
+    const bth = +i.th, bs = +i.sens;
+    if (bth >= 0.2 && bth <= 1.2 && bth !== CAL.boardT){ CAL.boardT = bth; if (Math.abs(C.th - bth) > 0.004){ C.th = bth; store.set('sw-settings', C); if (draftSet) draftSet.th = bth; if ($('view-settings').hidden) fillSettingsForm(); applySettings(); } }
+    if (bs >= 3 && bs <= 10 && bs !== CAL.boardS){ CAL.boardS = bs; const w = sensWord(bs); if (C.sens !== w){ C.sens = w; store.set('sw-settings', C); if (draftSet) draftSet.sens = w; if ($('view-settings').hidden) fillSettingsForm(); } }
+    if ($('sensBoard')) $('sensBoard').textContent = bs >= 3 ? `레이더 값 ${bs} (3 민감 ~ 10 둔감)` : '';
     addZs(i);
     if (i.pz != null && isFinite(+i.pz) && !ZB.buf.length) LIVE.z = { v: toFloor(i.pz), at: Date.now() };
     if (i.px == null) return;
@@ -1507,7 +1580,7 @@ window.SWAuth = (function(){
 
   /* ---------- 장치 설정 ---------- */
   function syncOutputs(){
-    $('oInst').textContent = (+$('sInst').value).toFixed(1) + ' m';
+    $('oInst').textContent = (+$('sInst').value).toFixed(2) + ' m';
     $('oTh').textContent = (+$('sTh').value).toFixed(2) + ' m';
     $('oGr').textContent = $('sGr').value + ' 초';
   }
@@ -1520,8 +1593,18 @@ window.SWAuth = (function(){
   }
   document.querySelectorAll('.sw[data-k]').forEach(b => b.addEventListener('click', () => { draftSet[b.dataset.k] = !draftSet[b.dataset.k]; b.setAttribute('aria-checked', String(draftSet[b.dataset.k])); }));
   $('stSave').onclick = () => {
+    const prev = Object.assign({}, C);
     C = Object.assign({}, draftSet, { inst:+$('sInst').value, th:+$('sTh').value, grace:+$('sGr').value, sens:$('sSens').value });
     store.set('sw-settings', C); applySettings(); flash('stSaved');
+    if (Math.abs(C.inst - (LIVE.info ? RADAR_H : prev.inst)) > 0.005) sendHeight(C.inst);   // 설치 높이가 바뀌었으면 보드·레이더에도 적용
+    // 낙상 판정 높이·유예·민감도도 바뀐 것만 보드로 (보드가 레이더에 설정하고 저장)
+    const bi = LIVE.info || {};
+    if (Math.abs(C.th - (bi.th != null ? +bi.th : prev.th)) > 0.004) sendSetting('T' + C.th.toFixed(2));
+    if (C.grace !== (bi.grace != null ? +bi.grace : prev.grace)) sendSetting('G' + C.grace);
+    if (SENS_VAL[C.sens] && (bi.sens != null ? sensWord(+bi.sens) !== C.sens : prev.sens !== C.sens)) sendSetting('S' + SENS_VAL[C.sens]);
+    // 다른 화면에도 같이 (알림 채널 켜기/끄기 포함, 설치 높이는 보드 값이 기준이라 제외)
+    const shared = {}; Object.keys(C).forEach(k => { if (k !== 'inst') shared[k] = C[k]; });
+    shareSave({ settings: shared }, '장치 설정');
     logShared(`장치 설정 저장 · 임계 ${C.th}m · 유예 ${C.grace}초 · 민감도 ${C.sens}`, 'sys');
   };
   $('stReset').onclick = () => { C = Object.assign({}, DEF_SET); store.set('sw-settings', C); fillSettingsForm(); applySettings(); flash('stSaved'); };
@@ -1562,6 +1645,7 @@ window.SWAuth = (function(){
   function toNormal(reason){
     S.mode = 'normal'; S.wait = 1.5; S.rest = null;
     $('modal').classList.remove('on');
+    stopVoice();   // 경고가 풀리면 말하던 안내 음성도 바로 끊음
     render(); log(reason || '시스템 정상 상태 전환', 'ok');
   }
   function toGrace(){
@@ -1992,6 +2076,10 @@ window.SWAuth = (function(){
     if (!('speechSynthesis' in window)) return;
     try{ const u = new SpeechSynthesisUtterance($('tts').textContent.replace(/["“”]/g,'')); u.lang = 'ko-KR'; u.rate = 0.95; speechSynthesis.cancel(); speechSynthesis.speak(u); }catch(e){}
   }
+  function stopVoice(){
+    try{ if ('speechSynthesis' in window) speechSynthesis.cancel(); }catch(e){}
+    $('eq').classList.remove('on');
+  }
   $('bPlay').onclick = speak;
 
   /* ---------- Claude ---------- */
@@ -2086,6 +2174,7 @@ ${data()}`, { onText: ({ text }) => { out.innerHTML = '<div class="cur">' + md(t
   async function voice(){
     if (busy) return;
     let t = null;
+    const startMode = S.mode;   // 멘트를 만드는 사이 경고가 풀렸으면 말하지 않음
     const call = P.name ? P.name.slice(-2) + ' 어르신' : '어르신';
     if (ai === 'ready'){
       lock(true); badge('멘트 생성 중...', 'work');
@@ -2100,6 +2189,7 @@ ${data()}`, { onText: ({ text }) => { out.innerHTML = '<div class="cur">' + md(t
       : `${call}, 오늘도 안전하게 지켜보고 있습니다. 편안한 하루 보내세요.`;
     $('tts').textContent = '"' + t.trim().replace(/^["“]|["”]$/g,'') + '"';
     if (fromAi){ badge('✓ 멘트 생성 완료', 'done'); log('Claude: TTS 안내 멘트 생성', 'ai'); } else idle();
+    if (startMode !== 'normal' && S.mode === 'normal') return;
     speak();
   }
 
@@ -2311,6 +2401,12 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
   function applyLive(st, info){
     info = info || {};
     LIVE.present = info.present !== undefined ? !!info.present : LIVE.present;
+    // 방금 확인을 눌렀으면: 보드가 정상으로 바뀔 때까지(최대 8초) 오는 경고 상태는 다시 띄우지 않음
+    if (S.ackUntil){
+      if (st === 'normal' || st === 'empty') S.ackUntil = 0;
+      else if (Date.now() < S.ackUntil) return;
+      else S.ackUntil = 0;   // 8초가 지나도 보드가 계속 경고면 확인이 안 전달된 것 → 다시 띄움
+    }
     if (st === 'normal' || st === 'empty'){
       if (S.mode !== 'normal') toNormal(info.msg || (S.mode === 'grace' ? '[레이더] 유예 중 기립 확인 · 오탐지 자동 해제' : '[레이더] 정상 복귀'));
       else {
@@ -2485,6 +2581,64 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
   }
   const remoteAck = () => remoteCmd('ACK');
 
+  // ---- 설정 하나를 보드로 ("T0.50" 낙상 판정 높이 / "G12" 유예초 / "S5" 민감도). 보드가 레이더에 설정하고 저장 ----
+  async function sendSetting(c){
+    if (LIVE.src === 'usb') return sendUsb(c);
+    try{
+      const r = await fetch(fbPath(`/cmd/${FB.node}`), { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(c) });
+      if (!r.ok) log(`설정 전송 실패 (${c}) · HTTP ${r.status}`, 'wn');
+      return r.ok;
+    }catch(e){ log(`설정 전송 실패 (${c}): ${e.message}`, 'wn'); return false; }
+  }
+  // ---- 설치 높이: 보드에 보내기 (보드가 레이더에 설정하고 저장) ----
+  async function sendHeight(h){
+    h = Math.round(h * 100) / 100;
+    if (!(h >= 1.5 && h <= 4.5)){ log('설치 높이는 1.5~4.5m 사이여야 합니다', 'wn'); return false; }
+    let ok = false;
+    if (LIVE.src === 'usb') ok = await sendUsb('H' + h.toFixed(2));
+    else {
+      try{
+        const r = await fetch(fbPath(`/cmd/${FB.node}`), { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify('H' + h.toFixed(2)) });
+        ok = r.ok; if (!ok) log(`설치 높이 전송 실패 · HTTP ${r.status}`, 'wn');
+      }catch(e){ log('설치 높이 전송 실패: ' + e.message, 'wn'); }
+    }
+    if (ok) logShared(`설치 높이 ${h.toFixed(2)}m 로 변경 요청 (보드에 적용)`, 'sys');
+    if (ok && !LIVE.info) log('보드가 꺼져 있어도 명령은 남아서, 켜지면 적용됩니다', 'sys');
+    return ok;
+  }
+  // ---- 설치 높이 자동 측정: 레이더 바로 아래 선 사람의 (머리까지 거리 + 키) ----
+  // 사람 말고 다른 것(책상·바닥 반사)도 섞여 잡혀서, 가까운 쪽 절반의 중앙값을 머리 거리로 씀
+  const HEAD_OFF = 0.08;   // 레이더가 잡는 곳은 정수리보다 약간 아래 (대략 8cm)
+  $('calGo').onclick = async () => {
+    const cm = +$('calH').value;
+    const res = $('calRes'); res.hidden = false;
+    if (!(cm >= 100 && cm <= 210)){ res.textContent = '키를 cm 로 넣어 주세요 (100~210)'; $('calH').focus(); return; }
+    if (!LIVE.src){ res.textContent = '레이더가 연결돼 있어야 합니다 (실시간 관제 화면에서 연결 확인)'; return; }
+    CAL.buf = []; CAL.on = true; $('calGo').disabled = true;
+    for (let s = 5; s > 0; s--){ res.textContent = `측정 중… ${s}초 (움직이지 말고 똑바로 서 있기)`; await new Promise(r => setTimeout(r, 1000)); }
+    await new Promise(r => setTimeout(r, 900));   // 마지막 묶음이 도착할 시간
+    CAL.on = false; $('calGo').disabled = false;
+    const v = CAL.buf.filter(d => d > 0.15 && d < 3.5).sort((a, b) => a - b);
+    if (v.length < 6){ res.textContent = `값이 너무 적습니다 (${v.length}개). 레이더 바로 아래에서 다시 해 주세요.`; return; }
+    const near = v.slice(0, Math.max(3, Math.ceil(v.length / 2)));
+    const d = near[near.length >> 1];
+    const spread = near[near.length - 1] - near[0];
+    const H = Math.round((d + cm / 100 - HEAD_OFF) * 100) / 100;
+    res.textContent = '';
+    const txt = document.createElement('span');
+    txt.innerHTML = `머리까지 거리 ${d.toFixed(2)}m + 키 ${(cm / 100).toFixed(2)}m → 설치 높이 <b>${H.toFixed(2)}m</b>`;
+    res.appendChild(txt);
+    if (spread > 0.25) res.appendChild(Object.assign(document.createElement('span'), { className: 'wfmu', textContent: `(값이 많이 흔들림 ±${(spread / 2).toFixed(2)}m · 다시 재 보는 걸 추천)` }));
+    if (!(H >= 1.5 && H <= 4.5)){ res.appendChild(Object.assign(document.createElement('span'), { textContent: ' · 범위를 벗어나서 적용할 수 없습니다' })); return; }
+    const b = Object.assign(document.createElement('button'), { type: 'button', className: 'primary', textContent: '이 값으로 적용' });
+    b.onclick = async () => {
+      b.disabled = true;
+      if (await sendHeight(H)){ C.inst = H; store.set('sw-settings', C); $('sInst').value = H; syncOutputs(); b.textContent = '보냄 ✓ (몇 초 뒤 보드 값이 바뀜)'; }
+      else b.disabled = false;
+    };
+    res.appendChild(b);
+  };
+
   // ---- 보드 와이파이 (관리자): wifi/<노드> 에 명령을 쓰면 보드가 읽고 지운 뒤 wifiinfo/<노드> 에 결과·목록·신호를 올림 ----
   // 신호 세기 아이콘 (막대 3개: -55 / -67 / -78 dBm 기준, 값 없으면 회색)
   function wifiIcon(rssi){
@@ -2498,13 +2652,13 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
   window.swWifiIcon = wifiIcon; window.swWifiWord = wifiWord;
   const WF = { info: null, wait: 0, timer: 0 };
   // 확인 창(confirm) 대신 "한 번 더 누르기" (앱 안 미리보기·웹뷰에서는 confirm 이 막혀서)
-  function twoStep(btn, armLabel, hint, act){
+  function twoStep(btn, armLabel, hint, act, resId){
     const orig = btn.textContent; let t = 0;
     const reset = () => { clearTimeout(t); btn.dataset.armed = ''; btn.textContent = orig; btn.classList.remove('armed'); };
     btn.onclick = () => {
       if (btn.dataset.armed){ reset(); act(); return; }
       btn.dataset.armed = '1'; btn.textContent = armLabel; btn.classList.add('armed');
-      $('wfRes').textContent = hint;
+      $(resId || 'wfRes').textContent = hint;
       t = setTimeout(reset, 4000);
     };
   }
@@ -2678,7 +2832,8 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
   /* ---------- 공통 ---------- */
   function askNotify(){ if ('Notification' in window && Notification.permission === 'default') try{ Notification.requestPermission(); }catch(e){} }
   function onAck(){
-    alarm.set('normal');
+    S.ackUntil = Date.now() + 8000;   // 보드가 확인을 받아 정상으로 바뀔 때까지 오는 "아직 경고" 값은 무시
+    alarm.set('normal'); stopVoice();
     if (LIVE.src === 'usb') sendUsb('ACK');
     if (LIVE.src === 'remote') remoteAck();
   }
@@ -2784,6 +2939,14 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
         if (!$('view-profile') || $('view-profile').hidden) fillProfileForm();   // 편집 중인 화면은 건드리지 않음
       }
     }
+    // 장치 설정 (낙상 판정 높이·유예·민감도·알림 채널). 설치 높이는 보드 값이 기준이라 제외
+    if (d.settings && typeof d.settings === 'object'){
+      const ns = Object.assign({}, C, d.settings, { inst: C.inst });
+      if (JSON.stringify(ns) !== JSON.stringify(C)){
+        C = ns; store.set('sw-settings', C); applySettings();
+        if ($('view-settings').hidden) fillSettingsForm();   // 편집 중인 화면은 건드리지 않음
+      }
+    }
     // 경보음 켜짐/꺼짐 (모든 화면 같이)
     if (typeof d.mute === 'boolean' && d.mute !== !!LS.get('mute')){
       LS.set('mute', d.mute);
@@ -2884,6 +3047,83 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
     es.addEventListener('auth_revoked', () => { es.close(); LGS.es = null; });
     es.onerror = () => { if (es.readyState === 2) LGS.es = null; };
   }
+  window.swLogShared = logShared;   // 회원 관리(로그인 부분)에서도 기록 남기기
+
+  // ---- 펌웨어 무선 업데이트 (관리자): .bin 을 12KB 씩 base64 로 ota/<노드>/c/<번호> 에 올리고 → meta → cmd "OTA" ----
+  // 보드가 조각을 받아 새 펌웨어로 바꾸고 ota/<노드>/status 에 진행률을 올림. 끝나면 조각은 지움 (와이파이 비밀번호가 들어 있어서)
+  const OTA = { busy: false, file: null, timer: 0 };
+  const OTA_CHUNK = 12288;
+  function otaShow(){
+    const i = LIVE.info || {};
+    $('otaCur').textContent = i.fw ? i.fw : (LIVE.src ? '예전 펌웨어 (무선 업데이트 기능 없음 · USB로 한 번 올려야 함)' : '보드 연결 안 됨');
+    $('otaGo').disabled = OTA.busy || !OTA.file || !i.fw;
+  }
+  setInterval(() => { const v = $('view-settings'); if (v && !v.hidden && !OTA.busy) otaShow(); }, 2000);
+  $('otaFile').addEventListener('change', () => {
+    const f = $('otaFile').files[0]; OTA.file = null;
+    if (!f) { otaShow(); return; }
+    if (f.size < 100000 || f.size > 1400000){ $('otaRes').textContent = `파일 크기가 이상합니다 (${Math.round(f.size / 1024)}KB). SafeWave_Node.ino.bin 을 골라 주세요 (merged 파일 말고).`; otaShow(); return; }
+    OTA.file = f; $('otaRes').textContent = `${f.name} · ${Math.round(f.size / 1024)}KB · ${Math.ceil(f.size / OTA_CHUNK)}조각`;
+    otaShow();
+  });
+  const otaApi = (p, method, body) => fetch(fbPath(`/ota/${FB.node}${p}`), { method, headers: { 'content-type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) })
+    .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status + (r.status === 401 ? ' (Firebase 규칙에 ota 추가 필요)' : '')); return r.json(); });
+  function otaProgress(pct, txt){ $('otaBarBox').hidden = false; $('otaBar').style.width = Math.max(0, Math.min(100, pct)) + '%'; $('otaSt').textContent = txt; }
+  async function otaStart(){
+    const f = OTA.file; if (!f || OTA.busy) return;
+    const buf = new Uint8Array(await f.arrayBuffer());
+    if (buf[0] !== 0xE9){ $('otaRes').textContent = 'ESP32 펌웨어 파일이 아닙니다 (.ino.bin 을 골라 주세요)'; return; }
+    OTA.busy = true; otaShow();
+    const before = (LIVE.info || {}).fw || '';
+    const n = Math.ceil(buf.length / OTA_CHUNK);
+    const ver = `${f.name} (${new Date(f.lastModified).toLocaleString('ko-KR', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' })})`;
+    try{
+      otaProgress(0, '예전 업로드 지우는 중…');
+      await otaApi('', 'PUT', null);
+      // 조각 올리기 (4개씩 동시에)
+      let done = 0;
+      const up = async i => {
+        const part = buf.subarray(i * OTA_CHUNK, Math.min(buf.length, (i + 1) * OTA_CHUNK));
+        let s = ''; for (let k = 0; k < part.length; k += 4096) s += String.fromCharCode.apply(null, part.subarray(k, k + 4096));
+        for (let t = 0; ; t++){ try{ await otaApi(`/c/${i}`, 'PUT', btoa(s)); break; }catch(e){ if (t >= 2) throw e; await new Promise(r => setTimeout(r, 800)); } }
+        done++; otaProgress(done / n * 50, `파일 올리는 중… ${done}/${n}`);
+      };
+      for (let i = 0; i < n; i += 4) await Promise.all([i, i + 1, i + 2, i + 3].filter(k => k < n).map(up));
+      await otaApi('/meta', 'PUT', { size: buf.length, n, ver, by: SWAuth.name() || null, at: { '.sv': 'timestamp' } });
+      await otaApi('/status', 'PUT', { st: 'wait', pct: 0, msg: '보드가 받기를 기다리는 중', at: { '.sv': 'timestamp' } });
+      const r = await fetch(fbPath(`/cmd/${FB.node}`), { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify('OTA') });
+      if (!r.ok) throw new Error('보드에 시작 명령 보내기 실패 · HTTP ' + r.status);
+      logShared(`펌웨어 무선 업데이트 시작: ${ver}`, 'wn');
+      otaProgress(50, '보드가 받는 중…');
+    }catch(e){
+      OTA.busy = false; otaProgress(0, '실패'); $('otaRes').textContent = '업로드 실패: ' + e.message; otaShow();
+      otaApi('/c', 'PUT', null).catch(() => {});
+      return;
+    }
+    // 보드 진행률 지켜보기 (최대 6분)
+    const t0 = Date.now();
+    clearInterval(OTA.timer);
+    OTA.timer = setInterval(async () => {
+      let s = null; try{ s = await otaApi('/status', 'GET'); }catch(e){}
+      const fwNow = (LIVE.info || {}).fw || '';
+      const finish = (ok, msg) => {
+        clearInterval(OTA.timer); OTA.busy = false;
+        otaProgress(ok ? 100 : (s && s.pct ? 50 + s.pct / 2 : 0), msg); $('otaRes').textContent = msg; otaShow();
+        otaApi('/c', 'PUT', null).catch(() => {});   // 펌웨어 조각 지우기 (비밀번호가 들어 있어서)
+        logShared(`펌웨어 무선 업데이트 ${ok ? '완료' : '실패'}: ${msg}`, ok ? 'ok' : 'wn');
+      };
+      if (s && s.st === 'down') otaProgress(50 + (s.pct || 0) / 2, `보드가 받는 중… ${s.pct || 0}%`);
+      if (s && s.st === 'fail') return finish(false, '보드: ' + (s.msg || '실패') + ' (지금 펌웨어로 계속 동작)');
+      if (s && s.st === 'done'){
+        otaProgress(100, '설치 완료 · 보드 다시 켜는 중…');
+        // 다시 켜진 것 확인: 보드가 보내는 켜진 시간(up)이 90초 미만으로 새로 시작됨
+        const li = LIVE.info;
+        if (li && +li.up < 90 && Date.now() - lastMsgAt < 5000) return finish(true, `완료 · 지금 펌웨어 ${fwNow || '?'}${fwNow && fwNow === before ? ' (버전 이름이 그대로임 · FW_VERSION 올리는 걸 추천)' : ''}`);
+      }
+      if (Date.now() - t0 > 360000) finish(false, '시간 초과 (6분) · 보드 상태를 확인해 주세요');
+    }, 1500);
+  }
+  twoStep($('otaGo'), '정말 업데이트', '한 번 더 누르면 보드 펌웨어를 바꿉니다. 1~3분 걸리고, 끝나면 보드가 몇 초 동안 다시 켜집니다.', otaStart, 'otaRes');
   if (REAL) SWAuth.ready.then(logsConnect);
   SWAuth.onRefresh(() => { if (LGS.es){ try{ LGS.es.close(); }catch(e){} LGS.es = null; } logsConnect(); });
   if (REAL) SWAuth.ready.then(shareConnect);
