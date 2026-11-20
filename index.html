@@ -819,8 +819,8 @@ html:not(.role-admin) #view-profile :is(input,select,textarea){border-color:tran
 <div class="view" id="view-log" hidden>
   <section class="glass panel">
     <div class="vtitle" style="margin-bottom:16px">
-      <div><h2>이벤트 로그</h2><p>대구 102동 거실 #1 · 이번 세션에서 발생한 모든 이벤트</p></div>
-      <button type="button" class="ghost" id="clearLog">로그 지우기</button>
+      <div><h2>이벤트 로그</h2><p>대구 102동 거실 #1 · 레이더 이벤트와 사용자 조작은 Firebase에 기록되어 모든 화면에 같이 보입니다 (최근 300개)</p></div>
+      <button type="button" class="ghost" id="clearLog" title="Firebase 기록은 남고 이 화면에서만 지워집니다">이 화면에서 지우기</button>
     </div>
     <div class="lstats">
       <div class="lstat"><b id="stAll" style="color:#fff">0</b><span>전체 이벤트</span></div>
@@ -1385,16 +1385,38 @@ window.SWAuth = (function(){
   const LOGS = [];
   const TYPE = { ok:'정상', wn:'경고', cr:'긴급', ai:'AI', sys:'시스템' };
   let logFilter = 'all';
+  // 이 화면에서만 생긴 알림 (연결 상태 등). 보드 이벤트·사람이 한 일은 addRecord 로 Firebase 기록에서 옴
   function log(msg, cls){
-    const e = { t: now(), d: today(), msg, cls: cls || 'sys' };
+    const e = { t: now(), d: today(), msg, cls: cls || 'sys', ms: Date.now() };
     LOGS.unshift(e); if (LOGS.length > 300) LOGS.pop();
+    pushRecent(e);
+    renderLog();
+  }
+  function pushRecent(e){
     const li = document.createElement('li'); li.className = e.cls === 'sys' ? '' : e.cls;
-    const m = document.createElement('span'); m.textContent = msg;
+    const m = document.createElement('span'); m.textContent = e.msg;
     const t = document.createElement('span'); t.className = 't'; t.textContent = e.t;
     li.append(m, t); $('recent').prepend(li);
     while ($('recent').children.length > 6) $('recent').lastChild.remove();
-    renderLog();
   }
+  // Firebase 에 남은 기록 하나 넣기 (id 로 중복 막음, 시각 순서로 정렬). live=true 면 실시간 카드에도 표시
+  const LG = { seen: new Set(), clearedAt: 0 };
+  try{ LG.clearedAt = +(localStorage.getItem('sw-log-cleared') || 0); }catch(e){}
+  function addRecord(id, ms, msg, cls, live){
+    if (!msg || LG.seen.has(id)) return;
+    LG.seen.add(id);
+    ms = +ms || Date.now();
+    if (ms < LG.clearedAt) return;
+    const dt = new Date(ms);
+    const e = { t: pad(dt.getHours()) + ':' + pad(dt.getMinutes()) + ':' + pad(dt.getSeconds()),
+                d: dt.getFullYear() + '-' + pad(dt.getMonth() + 1) + '-' + pad(dt.getDate()), msg, cls: cls || 'sys', ms, rec: true };
+    LOGS.push(e);
+    LOGS.sort((a, b) => (b.ms || 0) - (a.ms || 0));
+    if (LOGS.length > 300) LOGS.length = 300;
+    if (live) pushRecent(e);
+    LG.dirty = true;
+  }
+  setInterval(() => { if (LG.dirty){ LG.dirty = false; renderLog(); } }, 300);   // 한꺼번에 많이 와도 한 번만 다시 그림
   function renderLog(){
     const rows = LOGS.filter(e => logFilter === 'all' || e.cls === logFilter);
     $('ltbody').innerHTML = rows.length ? rows.map(e => `<tr><td class="t">${e.d.slice(5)} ${e.t}</td><td><span class="ty ${e.cls}">${TYPE[e.cls]}</span></td><td>${esc(e.msg)}</td></tr>`).join('')
@@ -1413,7 +1435,8 @@ window.SWAuth = (function(){
     $('chips').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
     renderLog();
   });
-  $('clearLog').onclick = () => { LOGS.length = 0; $('recent').innerHTML = ''; renderLog(); };
+  // 이 화면에서만 지움 (Firebase 기록은 남아서 다른 화면에는 그대로 보임)
+  $('clearLog').onclick = () => { LOGS.length = 0; $('recent').innerHTML = ''; LG.clearedAt = Date.now(); try{ localStorage.setItem('sw-log-cleared', String(LG.clearedAt)); }catch(e){} renderLog(); };
 
   /* ---------- 탭 ---------- */
   function go(tab){
@@ -1477,7 +1500,7 @@ window.SWAuth = (function(){
     P = { name:$('fName').value.trim() || '이름 없음', age:+$('fAge').value || '', sex:$('fSex').value, blood:$('fBlood').value,
       addr:$('fAddr').value.trim(), cond:$('fCond').value.trim(), meds:$('fMeds').value.trim(), mob:$('fMob').value.trim(), note:$('fNote').value.trim(),
       contacts: readContactEditor().filter(c => c.name || c.phone) };
-    store.set('sw-profile', P); renderProfile(); render(); flash('pfSaved'); log('대상자 정보 저장', 'sys');
+    store.set('sw-profile', P); renderProfile(); render(); flash('pfSaved'); logShared('대상자 정보 저장', 'sys');
     shareSave({ profile: P }, '대상자 정보');
   };
   $('pfReset').onclick = () => { P = JSON.parse(JSON.stringify(DEF_PROFILE)); store.set('sw-profile', P); fillProfileForm(); renderProfile(); render(); flash('pfSaved'); shareSave({ profile: P }, '대상자 정보'); };
@@ -1499,7 +1522,7 @@ window.SWAuth = (function(){
   $('stSave').onclick = () => {
     C = Object.assign({}, draftSet, { inst:+$('sInst').value, th:+$('sTh').value, grace:+$('sGr').value, sens:$('sSens').value });
     store.set('sw-settings', C); applySettings(); flash('stSaved');
-    log(`장치 설정 저장 · 임계 ${C.th}m · 유예 ${C.grace}초 · 민감도 ${C.sens}`, 'sys');
+    logShared(`장치 설정 저장 · 임계 ${C.th}m · 유예 ${C.grace}초 · 민감도 ${C.sens}`, 'sys');
   };
   $('stReset').onclick = () => { C = Object.assign({}, DEF_SET); store.set('sw-settings', C); fillSettingsForm(); applySettings(); flash('stSaved'); };
   function applySettings(){
@@ -1662,7 +1685,7 @@ window.SWAuth = (function(){
     const z = Object.assign(pendingZone, { name, hgt:0.4, custom:true });
     customZones.push(z); store.set('sw-zones', customZones);
     shareSave({ zones: customZones }, '예외 구역');
-    log(`'${name}' 예외 구역 지정 완료 (${z.w.toFixed(1)}m × ${z.h.toFixed(1)}m)`, 'ok');
+    logShared(`'${name}' 예외 구역 지정 (${z.w.toFixed(1)}m × ${z.h.toFixed(1)}m)`, 'ok');
     closeZ(); renderZones();
   };
   $('zCancel').onclick = () => { closeZ(); log('예외 구역 지정을 취소했습니다', 'sys'); };
@@ -1682,16 +1705,16 @@ window.SWAuth = (function(){
   $('zEdit').onclick = () => setEditing(!editing);
   const syncAxisBtns = () => ['X','Y'].forEach(a => { const on = !!LS_get('flip' + a); $('pFlip' + a).classList.toggle('on', on); $('pFlip' + a).setAttribute('aria-pressed', String(on)); });
   syncAxisBtns();
-  ['X','Y'].forEach(a => $('pFlip' + a).onclick = () => { LS_set('flip' + a, LS_get('flip' + a) ? null : true); syncAxisBtns(); shareSave({ ['flip' + a]: LS_get('flip' + a) || null }, '방향 반전'); log((a === 'X' ? '좌우' : '앞뒤') + ' 방향 ' + (LS_get('flip' + a) ? '반전' : '기본'), 'sys'); });
+  ['X','Y'].forEach(a => $('pFlip' + a).onclick = () => { LS_set('flip' + a, LS_get('flip' + a) ? null : true); syncAxisBtns(); shareSave({ ['flip' + a]: LS_get('flip' + a) || null }, '방향 반전'); logShared((a === 'X' ? '좌우' : '앞뒤') + ' 방향 ' + (LS_get('flip' + a) ? '반전' : '기본'), 'sys'); });
   $('pCal').onclick = () => {
     const now = Date.now(), r = POSRAW.filter(p => now - p[2] < 3000);
     if (r.length < 3){ log('위치 값이 없어서 가운데를 못 맞췄습니다 (레이더 앞에 서 주세요)', 'wn'); return; }
     const med = k => { const v = r.map(p => p[k]).sort((a,b) => a-b); return +v[v.length >> 1].toFixed(2); };
     LS_set('posOff', [med(0), med(1)]);
     shareSave({ posOff: [med(0), med(1)] }, '가운데 맞추기');
-    log(`가운데 맞춤: 레이더 값 X ${med(0)}m, Y ${med(1)}m 을 가운데로`, 'sys');
+    logShared(`가운데 맞춤: 레이더 값 X ${med(0)}m, Y ${med(1)}m 을 가운데로`, 'sys');
   };
-  $('zReset').onclick = () => { customZones = []; store.set('sw-zones', customZones); renderZones(); shareSave({ zones: null }, '예외 구역 초기화'); log('사용자 지정 예외 구역 전체 초기화', 'wn'); };
+  $('zReset').onclick = () => { customZones = []; store.set('sw-zones', customZones); renderZones(); shareSave({ zones: null }, '예외 구역 초기화'); logShared('사용자 지정 예외 구역 전체 초기화', 'wn'); };
   function renderZones(){
     $('zlist').innerHTML = allZones().map(z => `<span class="zchip${z.custom ? ' custom' : ''}">${z.custom ? '예외' : '안전지대'} · ${esc(z.name)} <small>${z.w.toFixed(1)}×${z.h.toFixed(1)}m</small></span>`).join('');
   }
@@ -2402,7 +2425,7 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
   function connectRemote(){
     if (remote) return;
     const es = new EventSource(fbPath(`/nodes/${FB.node}`));
-    const ev = new EventSource(fbPath('/events') + '&orderBy=%22$key%22&limitToLast=1');
+    const ev = new EventSource(fbPath('/events') + '&orderBy=%22$key%22&limitToLast=200');   // 지난 기록 200개 + 새로 생기는 것
     // 높이 기록: 최근 24시간을 받아 두고, 보드가 새로 쓰거나 지우는 것도 실시간 반영
     const zh = new EventSource(fbPath(`/zhist/${FB.node}`) + '&orderBy=%22$key%22&startAt=%22' + Math.floor(Date.now()/1000 - 86400) + '%22');
     const onZh = e => {
@@ -2435,13 +2458,13 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
       liveUi();
     };
     es.addEventListener('put', onNode); es.addEventListener('patch', onNode);
+    const evCls = d => ({ grace:'wn', emergency:'cr', response:'ok', ack:'ok', clear:'ok', enter:'ok' }[d.tag] || 'sys');
+    const evAdd = (key, d, live) => { if (d && d.msg && (!d.node || d.node === FB.node)) addRecord('ev:' + key, d.ts, '[레이더] ' + d.msg, evCls(d), live); };
     ev.addEventListener('put', e => {
       let m; try{ m = JSON.parse(e.data); }catch(_){ return; }
-      if (remote && remote.first){ remote.first = false; return; }      // 접속 직후의 지난 이벤트는 건너뜀
-      const d = m.path === '/' ? null : m.data;
-      if (!d || !d.msg || LIVE.src === 'usb') return;
-      const cls = { grace:'wn', emergency:'cr', response:'ok', ack:'ok', clear:'ok', enter:'ok' }[d.tag] || 'sys';
-      log('[레이더] ' + d.msg, cls);
+      if (m.path === '/'){ Object.entries(m.data || {}).forEach(([k, d]) => evAdd(k, d, false)); return; }   // 접속 직후: 지난 기록
+      if (LIVE.src === 'usb') return;   // USB 연결 중엔 USB 로 온 것을 이미 보여줌
+      evAdd(m.path.replace(/^\//, '').split('/')[0], m.data, true);
     });
     liveUi();
   }
@@ -2455,7 +2478,8 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
   async function remoteCmd(cmd){
     try{
       const r = await fetch(fbPath(`/cmd/${FB.node}`), { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(cmd) });
-      log(`[원격] ${cmd === 'ACK' ? '보호자 확인' : '낙상 테스트'} 명령 전송${r.ok ? '' : ' 실패 · HTTP ' + r.status}`, r.ok ? 'sys' : 'wn');
+      if (r.ok) logShared(cmd === 'ACK' ? '보호자 확인 버튼 누름' : '낙상 테스트 시작 (실제 낙상 아님)', cmd === 'ACK' ? 'ok' : 'wn');
+      else log(`[원격] ${cmd === 'ACK' ? '보호자 확인' : '낙상 테스트'} 명령 전송 실패 · HTTP ${r.status}`, 'wn');
       return r.ok;
     }catch(e){ log('[원격] 명령 전송 실패: ' + e.message, 'wn'); return false; }
   }
@@ -2617,7 +2641,7 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
       const r = await fetch(fbPath(`/cmd/${FB.node}_wifi`), { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(cmd) });
       if (!r.ok){ $('wfRes').textContent = `전송 실패 · HTTP ${r.status}`; wfRender(); return false; }
     }catch(e){ $('wfRes').textContent = '전송 실패: ' + e.message; wfRender(); return false; }
-    if (!quiet) log(`[원격] 와이파이 ${{ add:'추가', del:'삭제', use:'연결 변경', scan:'주변 찾기', restart:'보드 재시작' }[cmd.op] || cmd.op} 명령 전송`, 'sys');
+    if (!quiet) logShared(`보드 와이파이 ${{ add:'추가', del:'삭제', use:'연결 변경', scan:'주변 찾기', restart:'보드 재시작' }[cmd.op] || cmd.op}${cmd.ssid ? ': ' + cmd.ssid : ''}`, 'sys');
     WF.wait = Date.now(); WF.op = cmd.op;
     WF.pend = { op: cmd.op, ssid: cmd.ssid, before, start: Date.now(), limit: cmd.op === 'use' ? 40000 : 15000 };   // 와이파이를 바꾸면 다시 붙을 때까지 시간이 걸림
     if (!btn || cmd.op === 'use') wfRender(); else { wfAgo(); $('wfRes').textContent = cmd.op === 'use' ? '와이파이 바꾸는 중… (최대 40초, 그동안 원격 화면 끊김)' : '보드에 보내는 중…'; }
@@ -2717,7 +2741,7 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
   $('lvRm').onclick = () => { alarm.unlock(); askNotify(); remote ? disconnectRemote() : connectRemote(); };
   $('lvTest').onclick = async () => {
     alarm.unlock(); askNotify();
-    if (LIVE.src === 'usb'){ if (await sendUsb('TEST')) log('[USB] 낙상 테스트 명령 전송 (보드가 유예 → 긴급까지 진행)', 'sys'); }
+    if (LIVE.src === 'usb'){ if (await sendUsb('TEST')) logShared('낙상 테스트 시작 (USB, 실제 낙상 아님)', 'wn'); }
     else if (LIVE.src === 'remote') remoteCmd('TEST');
     else if (!REAL) toGrace();
     if (LIVE.src) shareTest();   // 다른 화면에도 "누가 테스트 중" 표시
@@ -2726,6 +2750,7 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
     if (alarm.ready() && !LS.get('mute')){ LS.set('mute', true); alarm.stopSiren(); }
     else { LS.set('mute', false); alarm.unlock(); alarm.beep(880, 0.2); if (S.mode === 'emergency'){ alarm.mode = ''; alarm.set('emergency'); } }
     shareMute(!!LS.get('mute'));   // 모든 화면 같이 켜기/끄기
+    logShared(LS.get('mute') ? '경보음 끔 (모든 화면)' : '경보음 켬 (모든 화면)', LS.get('mute') ? 'wn' : 'sys');
     liveUi();
   };
   setInterval(liveUi, 1000);
@@ -2750,8 +2775,6 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
     store.set('sw-zones', customZones);
     SH_KEYS.forEach(k => LS_set(k, d[k] == null || d[k] === false ? null : d[k]));
     renderZones(); syncAxisBtns();
-    if (!quiet && before !== JSON.stringify([customZones, SH_KEYS.map(LS_get)]))
-      log(`[공유] ${d.by ? d.by + ' 님이 ' : ''}예외 구역·지도 설정을 바꿔서 이 화면에도 반영했습니다`, 'sys');
     // 대상자 인적사항
     if (d.profile && typeof d.profile === 'object'){
       const np = Object.assign({}, DEF_PROFILE, d.profile);
@@ -2759,7 +2782,6 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
       if (JSON.stringify(np) !== JSON.stringify(P)){
         P = np; store.set('sw-profile', P); renderProfile(); render();
         if (!$('view-profile') || $('view-profile').hidden) fillProfileForm();   // 편집 중인 화면은 건드리지 않음
-        if (!quiet) log(`[공유] ${d.by ? d.by + ' 님이 ' : ''}대상자 정보를 바꿔서 이 화면에도 반영했습니다`, 'sys');
       }
     }
     // 경보음 켜짐/꺼짐 (모든 화면 같이)
@@ -2767,14 +2789,11 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
       LS.set('mute', d.mute);
       if (d.mute) alarm.stopSiren();
       else if (S.mode === 'emergency' && alarm.ready()){ alarm.mode = ''; alarm.set('emergency'); }
-      if (!quiet) log(`[공유] 경보음을 ${d.mute ? '껐습니다' : '켰습니다'} (다른 화면에서 변경)`, d.mute ? 'wn' : 'sys');
       liveUi();
     }
     // 낙상 테스트: 누가 눌렀는지
     if (d.test && d.test.at && (!SH.test || SH.test.at !== d.test.at)){
-      const fresh = Date.now() - d.test.at < 60000;
-      SH.test = d.test;
-      if (!quiet && fresh) log(`[공유] ${d.test.by || '다른 사용자'} 님이 낙상 테스트를 시작했습니다 (실제 낙상 아님)`, 'wn');
+      SH.test = d.test;   // 기록은 logs 에 따로 남음 (여기선 상태 줄 "TEST 진행 중 (누구)" 용)
       liveUi();
     }
   }
@@ -2839,6 +2858,34 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
     es.addEventListener('cancel', denied);
     es.onerror = () => { if (es.readyState === 2) denied(); };
   }
+  // ---- 사람이 한 일 기록: logs/<노드> 에 남기고 모든 화면이 같은 기록을 봄 ----
+  var LGS = { es: null };
+  function logShared(msg, cls){
+    if (!SWAuth.token()){ log(msg, cls); return; }
+    const who = SWAuth.name();
+    const body = { msg: msg + (who ? ` · ${who}` : ''), cls: cls || 'sys', by: who || null, ts: { '.sv': 'timestamp' } };
+    fetch(fbPath(`/logs/${FB.node}`), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+      .then(r => r.json().then(j => {
+        if (!r.ok || !j || !j.name){ log(msg, cls); return; }
+        addRecord('lg:' + j.name, Date.now(), body.msg, body.cls, true);   // 내 화면엔 바로 (구독으로 오는 같은 기록은 id 로 건너뜀)
+      }))
+      .catch(() => log(msg, cls));
+  }
+  function logsConnect(){
+    if (LGS.es || !SWAuth.token()) return;
+    const es = new EventSource(fbPath(`/logs/${FB.node}`) + '&orderBy=%22$key%22&limitToLast=200');
+    LGS.es = es;
+    es.addEventListener('put', e => {
+      let m; try{ m = JSON.parse(e.data); }catch(_){ return; }
+      if (m.path === '/'){ Object.entries(m.data || {}).forEach(([k, d]) => d && addRecord('lg:' + k, d.ts, d.msg, d.cls, false)); return; }
+      const k = m.path.replace(/^\//, '').split('/')[0], d = m.data;
+      if (d && d.msg) addRecord('lg:' + k, d.ts, d.msg, d.cls, true);
+    });
+    es.addEventListener('auth_revoked', () => { es.close(); LGS.es = null; });
+    es.onerror = () => { if (es.readyState === 2) LGS.es = null; };
+  }
+  if (REAL) SWAuth.ready.then(logsConnect);
+  SWAuth.onRefresh(() => { if (LGS.es){ try{ LGS.es.close(); }catch(e){} LGS.es = null; } logsConnect(); });
   if (REAL) SWAuth.ready.then(shareConnect);
   SWAuth.onRefresh(() => { if (SH.es){ try{ SH.es.close(); }catch(e){} SH.es = null; } shareConnect(); });
 })();
