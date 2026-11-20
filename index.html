@@ -2518,22 +2518,48 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
   const FB = { url: 'https://y-csts-default-rtdb.asia-southeast1.firebasedatabase.app', key: 'sw012b30e61a4cb665482a', node: 'daegu-102-1' };
   const fbPath = p => `${FB.url}/safewave/${FB.key}${p}.json?auth=${encodeURIComponent(SWAuth.token())}`;   // 로그인 토큰을 붙여 요청
   let lastUp = null, lastUpAt = 0;
+  // 몇 초마다 "마지막으로 받은 것 이후"만 받아오기 (실시간 연결 대신. close() 로 멈춤)
+  function keyPoller(path, firstQuery, every, onItem){
+    let last = null, stop = false, t = 0, first = true;
+    const tick = async () => {
+      if (stop) return;
+      try{
+        const q = last ? `&orderBy=%22$key%22&startAt=%22${encodeURIComponent(last)}%22` : firstQuery;
+        const r = await fetch(fbPath(path) + q);
+        if (r.status === 401 || r.status === 403){ if (first) log('[원격] 기록 읽기 권한이 없습니다 (계정 승인·Firebase 규칙 확인)', 'wn'); }
+        else if (r.ok){
+          const d = await r.json();
+          const ks = d ? Object.keys(d).sort() : [];
+          ks.forEach(k => { if (k !== last) onItem(k, d[k], first); });
+          if (ks.length) last = ks[ks.length - 1];
+          else if (first) onItem(null, null, true);
+          first = false;
+        }
+      }catch(e){}
+      if (!stop) t = setTimeout(tick, every);
+    };
+    tick();
+    return { close(){ stop = true; clearTimeout(t); } };
+  }
   function connectRemote(){
     if (remote) return;
+    // 실시간 연결(EventSource)은 꼭 필요한 것만: 브라우저는 같은 서버에 연결을 6개까지만 열어서,
+    // 다 쓰면 버튼 눌러 보내는 요청이 줄 서서 기다림. 레이더 이벤트·높이 기록은 몇 초마다 새 것만 받아옴
     const es = new EventSource(fbPath(`/nodes/${FB.node}`));
-    const ev = new EventSource(fbPath('/events') + '&orderBy=%22$key%22&limitToLast=200');   // 지난 기록 200개 + 새로 생기는 것
-    // 높이 기록: 최근 24시간을 받아 두고, 보드가 새로 쓰거나 지우는 것도 실시간 반영
-    const zh = new EventSource(fbPath(`/zhist/${FB.node}`) + '&orderBy=%22$key%22&startAt=%22' + Math.floor(Date.now()/1000 - 86400) + '%22');
-    const onZh = e => {
-      let m; try{ m = JSON.parse(e.data); }catch(_){ return; }
-      if (m.path === '/'){ if (e.type === 'put') ZH.map = {}; Object.assign(ZH.map, m.data || {}); Object.keys(ZH.map).forEach(k => { if (ZH.map[k] == null) delete ZH.map[k]; }); }
-      else { const k = m.path.replace(/^\//,''); if (m.data == null) delete ZH.map[k]; else ZH.map[k] = m.data; }
+    const evCls = d => ({ grace:'wn', emergency:'cr', response:'ok', ack:'ok', clear:'ok', enter:'ok' }[d.tag] || 'sys');
+    const ev = keyPoller('/events', '&orderBy=%22$key%22&limitToLast=200', 4000, (k, d, first) => {   // 지난 기록 200개 + 새로 생기는 것
+      if (d && d.msg && (!d.node || d.node === FB.node)) addRecord('ev:' + k, d.ts, '[레이더] ' + d.msg, evCls(d), !first && LIVE.src !== 'usb');
+    });
+    // 높이 기록: 최근 24시간 + 20초마다 새 값 (보드는 10초마다 씀). 24시간 지난 건 화면에서 버림
+    const zh = keyPoller(`/zhist/${FB.node}`, '&orderBy=%22$key%22&startAt=%22' + Math.floor(Date.now()/1000 - 86400) + '%22', 20000, (k, v) => {
+      if (k != null && v != null) ZH.map[k] = v;
+      const old = Math.floor(Date.now() / 1000 - 86400);
+      Object.keys(ZH.map).forEach(x => { if (+x < old) delete ZH.map[x]; });
       ZH.dirty = true; chartDone = false;
-    };
-    zh.addEventListener('put', onZh); zh.addEventListener('patch', onZh);
+    });
     remote = { es, ev, zh, node: FB.node, first: true };
     // 토큰 만료 → 새로 받아 다시 연결 / 권한 없음 → 안내
-    [es, ev, zh].forEach(s => {
+    [es].forEach(s => {
       s.addEventListener('auth_revoked', () => SWAuth.refreshNow());
       s.addEventListener('cancel', () => log('[원격] 데이터 접근 권한이 없습니다 (계정 승인·Firebase 규칙 확인)', 'wn'));
     });
@@ -2554,14 +2580,6 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
       liveUi();
     };
     es.addEventListener('put', onNode); es.addEventListener('patch', onNode);
-    const evCls = d => ({ grace:'wn', emergency:'cr', response:'ok', ack:'ok', clear:'ok', enter:'ok' }[d.tag] || 'sys');
-    const evAdd = (key, d, live) => { if (d && d.msg && (!d.node || d.node === FB.node)) addRecord('ev:' + key, d.ts, '[레이더] ' + d.msg, evCls(d), live); };
-    ev.addEventListener('put', e => {
-      let m; try{ m = JSON.parse(e.data); }catch(_){ return; }
-      if (m.path === '/'){ Object.entries(m.data || {}).forEach(([k, d]) => evAdd(k, d, false)); return; }   // 접속 직후: 지난 기록
-      if (LIVE.src === 'usb') return;   // USB 연결 중엔 USB 로 온 것을 이미 보여줌
-      evAdd(m.path.replace(/^\//, '').split('/')[0], m.data, true);
-    });
     liveUi();
   }
   function disconnectRemote(){
@@ -2742,7 +2760,11 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
   }
   let wfAutoScanAt = 0;
   setInterval(() => {
-    const v = $('view-settings'); if (!v || v.hidden) return;
+    const v = $('view-settings');
+    if (!v || v.hidden){   // 설정 화면을 벗어나면 와이파이 실시간 연결을 닫음 (브라우저 연결 수 아끼기)
+      if (WF.es && !WF.pend){ try{ WF.es.close(); }catch(e){} WF.es = null; }
+      return;
+    }
     wfAgo(); wfLive();
     // 화면을 보고 있으면 30초마다 주변 와이파이 신호도 새로 찾기
     if (WF.info && WF.info.list && !WF.wait && WF.scanTime && Date.now() - WF.scanTime > 30000 && Date.now() - wfAutoScanAt > 30000){
@@ -3036,16 +3058,10 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
   }
   function logsConnect(){
     if (LGS.es || !SWAuth.token()) return;
-    const es = new EventSource(fbPath(`/logs/${FB.node}`) + '&orderBy=%22$key%22&limitToLast=200');
-    LGS.es = es;
-    es.addEventListener('put', e => {
-      let m; try{ m = JSON.parse(e.data); }catch(_){ return; }
-      if (m.path === '/'){ Object.entries(m.data || {}).forEach(([k, d]) => d && addRecord('lg:' + k, d.ts, d.msg, d.cls, false)); return; }
-      const k = m.path.replace(/^\//, '').split('/')[0], d = m.data;
-      if (d && d.msg) addRecord('lg:' + k, d.ts, d.msg, d.cls, true);
+    // 실시간 연결 대신 3초마다 새 기록만 받아옴 (브라우저 연결 수 제한)
+    LGS.es = keyPoller(`/logs/${FB.node}`, '&orderBy=%22$key%22&limitToLast=200', 3000, (k, d, first) => {
+      if (d && d.msg) addRecord('lg:' + k, d.ts, d.msg, d.cls, !first);
     });
-    es.addEventListener('auth_revoked', () => { es.close(); LGS.es = null; });
-    es.onerror = () => { if (es.readyState === 2) LGS.es = null; };
   }
   window.swLogShared = logShared;   // 회원 관리(로그인 부분)에서도 기록 남기기
 
@@ -3080,7 +3096,8 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
     try{
       otaProgress(0, '예전 업로드 지우는 중…');
       await otaApi('', 'PUT', null);
-      // 조각 올리기 (4개씩 동시에)
+      // 조각 올리기 (2개씩 동시에 · 와이파이 실시간 연결은 잠깐 닫아서 연결 자리를 비움)
+      if (WF.es){ try{ WF.es.close(); }catch(e){} WF.es = null; }
       let done = 0;
       const up = async i => {
         const part = buf.subarray(i * OTA_CHUNK, Math.min(buf.length, (i + 1) * OTA_CHUNK));
@@ -3088,7 +3105,7 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
         for (let t = 0; ; t++){ try{ await otaApi(`/c/${i}`, 'PUT', btoa(s)); break; }catch(e){ if (t >= 2) throw e; await new Promise(r => setTimeout(r, 800)); } }
         done++; otaProgress(done / n * 50, `파일 올리는 중… ${done}/${n}`);
       };
-      for (let i = 0; i < n; i += 4) await Promise.all([i, i + 1, i + 2, i + 3].filter(k => k < n).map(up));
+      for (let i = 0; i < n; i += 2) await Promise.all([i, i + 1].filter(k => k < n).map(up));
       await otaApi('/meta', 'PUT', { size: buf.length, n, ver, by: SWAuth.name() || null, at: { '.sv': 'timestamp' } });
       await otaApi('/status', 'PUT', { st: 'wait', pct: 0, msg: '보드가 받기를 기다리는 중', at: { '.sv': 'timestamp' } });
       const r = await fetch(fbPath(`/cmd/${FB.node}`), { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify('OTA') });
