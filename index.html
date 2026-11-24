@@ -327,6 +327,38 @@ html:not(.real) .ckey .zr{display:none}
 .sw[aria-checked="true"]{background:#14B8A6;box-shadow:0 0 12px -2px rgba(45,212,191,.7)}
 .sw[aria-checked="true"]::after{transform:translateX(22px)}
 .sysinfo{display:grid;grid-template-columns:110px minmax(0,1fr);gap:10px 12px;font-size:13px}
+/* 함께 보기: 방 화면 두 개 나란히 (좁으면 위아래) */
+.bothbar{display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap;padding:12px 16px;font-size:13px;color:var(--tx2);margin-bottom:14px}
+.bothgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+@media (max-width:1100px){.bothgrid{grid-template-columns:minmax(0,1fr)}}
+.bothcol{padding:0;overflow:hidden;display:flex;flex-direction:column;min-width:0}
+.bothhd{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--bd2)}
+.bothhd b{margin-right:auto;font-size:15px}
+.bothcol iframe{border:0;width:100%;height:calc(100vh - 230px);min-height:560px;background:transparent;display:block}
+.bst{font-size:12.5px;font-weight:800;padding:3px 10px;border-radius:99px;border:1px solid var(--bd2);color:var(--mu)}
+.bst.normal{color:#5EEAD4;border-color:rgba(45,212,191,.5)}
+.bst.grace{color:#FCD34D;border-color:#FBBF24;animation:wfPulse 1s infinite}
+.bst.emergency{color:#FECDD3;border-color:#FB7185;background:rgba(244,63,94,.2);animation:wfPulse .7s infinite}
+/* 방 화면(함께 보기 안): 머리말·메뉴·AI 같은 큰 칸은 숨기고 관제에 필요한 것만 */
+html.embed .hdr, html.embed .foot, html.embed #roomAlert, html.embed .simctl, html.embed #lvSnd,
+html.embed section[aria-labelledby="hRule"], html.embed section[aria-labelledby="hNt"],
+html.embed section[aria-labelledby="hSubj"], html.embed section[aria-labelledby="hCt"], html.embed section[aria-labelledby="hAi"]{display:none!important}
+html.embed .wrap{padding:10px}
+html.both .nav button[data-go]{display:none}   /* 함께 보기: 로그·설정은 방 하나를 골라서 */
+html.both .wrap{max-width:none}
+html.embed body{background:transparent}
+.chip.rooms{gap:6px}
+#roomBtns{display:inline-flex;gap:4px}
+.roomb{border:1px solid var(--bd2);background:transparent;color:var(--tx2);font:inherit;font-size:12.5px;font-weight:700;padding:3px 10px;border-radius:99px;min-height:28px;cursor:pointer}
+.roomb.on{background:rgba(45,212,191,.18);border-color:rgba(45,212,191,.55);color:#5EEAD4}
+.roomb.st-off:not(.on){opacity:.55}
+.roomb.st-grace{border-color:#FBBF24;color:#FCD34D;animation:wfPulse 1s infinite}
+.roomb.st-emergency{border-color:#FB7185;color:#FDA4AF;background:rgba(244,63,94,.18);animation:wfPulse .7s infinite}
+#roomAlert{position:sticky;top:0;z-index:60;display:grid;gap:6px;padding:8px 16px;background:rgba(2,6,23,.92);backdrop-filter:blur(6px)}
+#roomAlert .ra{display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap;border-radius:12px;padding:10px 14px;font-weight:800;font-size:15px}
+#roomAlert .ra.grace{background:rgba(251,191,36,.16);border:1px solid rgba(251,191,36,.6);color:#FCD34D}
+#roomAlert .ra.emergency{background:rgba(244,63,94,.2);border:1px solid rgba(251,113,133,.7);color:#FECDD3}
+#roomAlert button{border:0;border-radius:10px;padding:8px 14px;font:inherit;font-weight:800;background:#F8FAFC;color:#0F172A;min-height:40px;cursor:pointer}
 .otabar{height:10px;border-radius:99px;background:rgba(148,163,184,.18);overflow:hidden;margin-top:12px}
 .otabar-in{height:100%;width:0;background:linear-gradient(90deg,#A78BFA,#2DD4BF);transition:width .4s}
 .calbox{border:1px dashed var(--bd2);border-radius:12px;padding:12px}
@@ -591,13 +623,15 @@ html:not(.role-admin) #view-profile :is(input,select,textarea){border-color:tran
       <div class="t"><h1>SafeWave AI Monitor</h1><span class="tag">60GHz mmWave</span></div>
       <p>3단계 오탐지 방지 · Claude AI 응급 관제 시스템</p>
     </div>
-    <div class="chip"><span class="live" aria-hidden="true"></span><span>노드</span><strong>대구 102동 거실 #1</strong></div>
+    <div class="chip rooms" role="group" aria-label="방 고르기"><span class="live" aria-hidden="true"></span><span>방</span><span id="roomBtns"></span></div>
     <div class="chip clock" id="clock">----</div>
     <div class="pill normal" id="pill" role="status" aria-live="polite"><i></i><span id="pillTx">정상 NORMAL</span></div>
     <div class="chip user"><strong id="uName">-</strong><span class="rb" id="uRole"></span><button type="button" id="uOut">로그아웃</button></div>
   </div>
   <nav class="nav" aria-label="주요 메뉴">
-    <button type="button" data-go="live" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M12 12l6-6"/></svg>실시간 관제</button>
+    <button type="button" data-view="daegu-102-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M12 12l6-6"/></svg>거실 관제</button>
+    <button type="button" data-view="daegu-102-2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M12 12l6-6"/></svg>큰방 관제</button>
+    <button type="button" data-view="both"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="8" height="16" rx="2"/><rect x="13" y="4" width="8" height="16" rx="2"/></svg>함께 보기</button>
     <button type="button" data-go="log"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></svg>이벤트 로그 <span class="cnt" id="navCnt">0</span></button>
     <button type="button" data-go="profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>대상자 정보</button>
     <button type="button" data-go="settings" class="adm-only"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>장치 설정</button>
@@ -606,6 +640,15 @@ html:not(.role-admin) #view-profile :is(input,select,textarea){border-color:tran
 </header>
 
 <main class="wrap">
+
+<!-- ================= 함께 보기 (거실 + 큰방 나란히) ================= -->
+<div class="view" id="view-both" hidden>
+  <div class="bothbar glass">
+    <span>거실과 큰방을 나란히 봅니다. 각 화면은 그 방만의 지도·높이·경고를 보여 줍니다. 로그·설정은 방 하나를 골라서 보세요.</span>
+    <button type="button" class="lvb" id="bothSnd">🔔 경보음 켜기</button>
+  </div>
+  <div class="bothgrid" id="bothGrid"></div>
+</div>
 
 <!-- ================= 실시간 관제 ================= -->
 <div class="view" id="view-live">
@@ -663,7 +706,7 @@ html:not(.role-admin) #view-profile :is(input,select,textarea){border-color:tran
         <div class="ph">
           <div class="tt">
             <div class="ico" style="background:rgba(45,212,191,.16);color:#2DD4BF;border:1px solid rgba(45,212,191,.4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2zM9 4v14M15 6v14"/></svg></div>
-            <div><h3 id="hMap">실시간 거실 레이더 감지</h3><p id="mapSub">안전지대(침대/소파) 표시 · 대상자 재실 및 실측 높이(Z)</p></div>
+            <div><h3 id="hMap">실시간 <span class="roomName">거실</span> 레이더 감지</h3><p id="mapSub">안전지대(침대/소파) 표시 · 대상자 재실 및 실측 높이(Z)</p></div>
           </div>
           <div class="tools">
             <div class="seg" role="group" aria-label="보기 모드">
@@ -828,7 +871,7 @@ html:not(.role-admin) #view-profile :is(input,select,textarea){border-color:tran
 <div class="view" id="view-log" hidden>
   <section class="glass panel">
     <div class="vtitle" style="margin-bottom:16px">
-      <div><h2>이벤트 로그</h2><p>대구 102동 거실 #1 · 레이더 이벤트와 사용자 조작은 Firebase에 기록되어 모든 화면에 같이 보입니다 (최근 300개)</p></div>
+      <div><h2>이벤트 로그</h2><p><span class="nodeName">대구 102동 거실 #1</span> ·레이더 이벤트와 사용자 조작은 Firebase에 기록되어 모든 화면에 같이 보입니다 (최근 300개)</p></div>
       <button type="button" class="ghost" id="clearLog" title="Firebase 기록은 남고 이 화면에서만 지워집니다">이 화면에서 지우기</button>
     </div>
     <div class="lstats">
@@ -921,7 +964,7 @@ html:not(.role-admin) #view-profile :is(input,select,textarea){border-color:tran
   <section class="glass panel" style="margin-top:18px" aria-labelledby="hSys">
     <div class="ph"><div class="tt"><div class="ico" style="background:rgba(56,189,248,.14);color:#38BDF8;border:1px solid rgba(56,189,248,.4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9zM9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/></svg></div><div><h3 id="hSys">장치 정보</h3><p>현재 연결된 노드</p></div></div></div>
     <dl class="sysinfo">
-      <dt>노드</dt><dd>대구 102동 거실 #1</dd>
+      <dt>노드</dt><dd class="nodeName">대구 102동 거실 #1</dd>
       <dt>센서</dt><dd>60GHz mmWave 레이더</dd>
       <dt>감지 구역</dt><dd>5.0m × 5.0m · 안전지대 2개 (소파, 침대)</dd>
       <dt>통신</dt><dd id="sysComm">Wi-Fi · 시뮬레이션 모드</dd>
@@ -951,7 +994,7 @@ html:not(.role-admin) #view-profile :is(input,select,textarea){border-color:tran
     <div class="fields" style="margin-top:14px">
       <div class="f full"><label for="otaFile">새 펌웨어 파일 (.bin)</label><input id="otaFile" type="file" accept=".bin,application/octet-stream"></div>
     </div>
-    <span class="help" style="display:block;margin-top:8px">아두이노 IDE의 <b>스케치 → 컴파일된 바이너리 내보내기</b>로 만든 <code>SafeWave_Node.ino.bin</code> 을 고르세요 (merged·bootloader 파일 말고). 받는 동안에도 감지는 계속되고, 실패하면 지금 펌웨어 그대로 동작합니다. 파일에는 와이파이 비밀번호가 들어 있어서 관리자만 볼 수 있게 올리고, 끝나면 지웁니다.</span>
+    <span class="help" style="display:block;margin-top:8px">아두이노 IDE의 <b>스케치 → 컴파일된 바이너리 내보내기</b>로 만든 <code>SafeWave_Node.ino.bin</code> 을 고르세요 (merged·bootloader 파일 말고). 방마다 파일이 달라요: <code>SafeWave_Node\build\<span class="roomName">거실</span>\SafeWave_Node.ino.bin</code> 받는 동안에도 감지는 계속되고, 실패하면 지금 펌웨어 그대로 동작합니다. 파일에는 와이파이 비밀번호가 들어 있어서 관리자만 볼 수 있게 올리고, 끝나면 지웁니다.</span>
     <div class="actions" style="margin-top:12px"><span class="wfmu" id="otaRes" role="status"></span><button type="button" class="primary" id="otaGo" disabled>업로드하고 업데이트</button></div>
   </section>
   <div class="actions"><span class="saved" id="stSaved">✓ 저장되었습니다</span><button type="button" class="ghost" id="stReset">기본값</button><button type="button" class="primary" id="stSave">저장</button></div>
@@ -1236,7 +1279,12 @@ window.SWAuth = (function(){
     if (!saved || !saved.refreshToken){ showForms('login'); return; }
     sess = { uid: saved.uid, email: saved.email, refreshToken: saved.refreshToken, idToken: '', exp: 0 };
     try{ await refresh(); await enter(); }
-    catch(e){ try{ localStorage.removeItem(LSK); }catch(_){} showForms('login'); say(errMsg(e)); }
+    catch(e){
+      // 로그인 자체가 무효일 때만 저장된 로그인을 지움 (잠깐 인터넷 오류·동시에 여러 화면이 켜질 때는 지우지 않음)
+      const bad = /TOKEN|USER_NOT_FOUND|USER_DISABLED|INVALID_GRANT|PROJECT_NUMBER_MISMATCH/i.test(String(e && e.message));
+      if (bad){ try{ localStorage.removeItem(LSK); }catch(_){} }
+      showForms('login'); say(bad ? errMsg(e) : '연결이 잠깐 안 됐어요. 새로고침해 주세요. (' + errMsg(e) + ')');
+    }
   })();
 
   return {
@@ -1261,10 +1309,28 @@ window.SWAuth = (function(){
   const today = () => { const d = new Date(); return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); };
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
+  /* ---------- 방(노드) 고르기: 거실·큰방. 고른 방은 이 브라우저에 기억 ---------- */
+  const NODES = [
+    { id: 'daegu-102-1', room: '거실', name: '대구 102동 거실 #1' },
+    { id: 'daegu-102-2', room: '큰방', name: '대구 102동 큰방 #2' }
+  ];
+  // 보는 방식: 거실만 / 큰방만 / 둘 다 나란히(both). both 일 땐 이 페이지 안에 방마다 작은 화면(embed=1)을 하나씩 띄움
+  const QS = new URLSearchParams(location.search);
+  const EMBED = QS.get('embed') === '1';            // 나란히 보기 안에 들어간 방 화면
+  const nodeOf = s => NODES.find(n => n.id === s || n.room === s);
+  let VIEW = 'daegu-102-1';
+  try{ VIEW = QS.get('node') || localStorage.getItem('sw-view') || localStorage.getItem('sw-node') || VIEW; }catch(e){}
+  const BOTH = !EMBED && VIEW === 'both';
+  let CUR = nodeOf(VIEW) || NODES[0];
+  if (EMBED) document.documentElement.classList.add('embed');
+  if (BOTH) document.documentElement.classList.add('both');
+  const NSFX = CUR === NODES[0] ? '' : '@' + CUR.id;   // 방마다 따로 저장할 값의 꼬리표 (거실은 예전 이름 그대로)
+  const nk = k => (k === 'sw-zones' || k === 'sw-settings' || k === 'sw-log-cleared' || k.startsWith('sw-live-')) ? k + NSFX : k;
+
   /* ---------- 저장소 (이 브라우저 전용) ---------- */
   const store = {
-    get(k){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; }catch(e){ return null; } },
-    set(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); return true; }catch(e){ return false; } }
+    get(k){ try{ const v = localStorage.getItem(nk(k)); return v ? JSON.parse(v) : null; }catch(e){ return null; } },
+    set(k,v){ try{ localStorage.setItem(nk(k), JSON.stringify(v)); return true; }catch(e){ return false; } }
   };
   const DEF_PROFILE = {
     name:'김영순', age:78, sex:'여', blood:'A+', addr:'대구 ○○구 ○○로 102동 1203호',
@@ -1432,8 +1498,8 @@ window.SWAuth = (function(){
     const cl = val => Math.max(0.15, Math.min(ROOM - 0.15, val));
     return [cl(p.x + PB.v[0] * lead), cl(p.y + PB.v[1] * lead)];
   }
-  function LS_get(k){ try{ return JSON.parse(localStorage.getItem('sw-live-' + k)); }catch(e){ return null; } }
-  function LS_set(k, v){ try{ if (v == null) localStorage.removeItem('sw-live-' + k); else localStorage.setItem('sw-live-' + k, JSON.stringify(v)); }catch(e){} }
+  function LS_get(k){ try{ return JSON.parse(localStorage.getItem(nk('sw-live-' + k))); }catch(e){ return null; } }
+  function LS_set(k, v){ try{ if (v == null) localStorage.removeItem(nk('sw-live-' + k)); else localStorage.setItem(nk('sw-live-' + k), JSON.stringify(v)); }catch(e){} }
   const POSRAW = [];
   const hist = { z:[], b:[] };
   for (let i=0;i<120;i++){ hist.z.push(STAND_Z); hist.b.push(16); }
@@ -1474,7 +1540,7 @@ window.SWAuth = (function(){
   }
   // Firebase 에 남은 기록 하나 넣기 (id 로 중복 막음, 시각 순서로 정렬). live=true 면 실시간 카드에도 표시
   const LG = { seen: new Set(), clearedAt: 0 };
-  try{ LG.clearedAt = +(localStorage.getItem('sw-log-cleared') || 0); }catch(e){}
+  try{ LG.clearedAt = +(localStorage.getItem(nk('sw-log-cleared')) || 0); }catch(e){}
   function addRecord(id, ms, msg, cls, live){
     if (!msg || LG.seen.has(id)) return;
     LG.seen.add(id);
@@ -1509,14 +1575,18 @@ window.SWAuth = (function(){
     renderLog();
   });
   // 이 화면에서만 지움 (Firebase 기록은 남아서 다른 화면에는 그대로 보임)
-  $('clearLog').onclick = () => { LOGS.length = 0; $('recent').innerHTML = ''; LG.clearedAt = Date.now(); try{ localStorage.setItem('sw-log-cleared', String(LG.clearedAt)); }catch(e){} renderLog(); };
+  $('clearLog').onclick = () => { LOGS.length = 0; $('recent').innerHTML = ''; LG.clearedAt = Date.now(); try{ localStorage.setItem(nk('sw-log-cleared'), String(LG.clearedAt)); }catch(e){} renderLog(); };
 
   /* ---------- 탭 ---------- */
   function go(tab){
     if ((tab === 'settings' || tab === 'users') && !SWAuth.isAdmin()) return;   // 관리자 전용 화면
+    if (BOTH) tab = 'both';                 // 함께 보기: 나란히 화면만 (로그·설정은 방 하나를 골라서)
+    else if (tab === 'both') tab = 'live';
     S.tab = tab;
-    ['live','log','profile','settings','users'].forEach(v => { $('view-'+v).hidden = v !== tab; });
+    ['live','both','log','profile','settings','users'].forEach(v => { $('view-'+v).hidden = v !== tab; });
     document.querySelectorAll('.nav button[data-go]').forEach(b => { if (b.dataset.go === tab) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); });
+    const vNow = BOTH ? 'both' : CUR.id;    // 방 탭(거실 관제·큰방 관제·함께 보기)
+    document.querySelectorAll('.nav button[data-view]').forEach(b => { if ((tab === 'live' || tab === 'both') && b.dataset.view === vNow) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); });
     if (tab === 'profile') fillProfileForm();
     if (tab === 'settings'){ fillSettingsForm(); if (window.swWifiLoad && SWAuth.token()) window.swWifiLoad(); }
     if (tab === 'users') SWAuth.loadUsers();
@@ -1625,8 +1695,9 @@ window.SWAuth = (function(){
     $('hero').className = 'glass hero ' + m;
     $('sbox').innerHTML = ICON[m];
     $('sbadge').textContent = h[0]; $('heroTitle').textContent = h[1]; $('heroDesc').textContent = h[2];
-    $('pill').className = 'pill ' + m;
-    $('pillTx').textContent = m === 'normal' ? '정상 NORMAL' : m === 'grace' ? '유예 GRACE' : '긴급 EMERGENCY';
+    const pm = BOTH ? bothWorst() : m;   // 나란히 보기: 두 방 중 가장 위급한 상태
+    $('pill').className = 'pill ' + pm;
+    $('pillTx').textContent = pm === 'normal' ? '정상 NORMAL' : pm === 'grace' ? '유예 GRACE' : '긴급 EMERGENCY';
     const set = (id, cls, txt) => { $(id).className = 'step' + (cls ? ' '+cls : ''); $(id+'t').textContent = txt; };
     if (m === 'normal'){ set('s1', S.rest ? 'done' : '', S.rest ? '✓ 안전지대 제외' : '정상 감시 중'); set('s2','','대기 중'); set('s3','','대기 중'); }
     if (m === 'grace'){ set('s1','done', REAL ? '✓ 낙상 신호 포착' : '✓ Z축 낙상 포착'); set('s2','active','검증 중'); set('s3','','대기 중'); }
@@ -2138,10 +2209,10 @@ ${P.name} / ${P.age}세 / ${P.sex} / 혈액형 ${P.blood}
 보행: ${P.mob || '미상'} / 특이사항: ${P.note || '없음'}
 
 ${REAL ? `[센서 데이터 · 실측 (MR60FDA2)]
-노드: 대구 102동 거실 #1 / 상태: ${S.mode.toUpperCase()}
+노드: ${CUR.name} / 상태: ${S.mode.toUpperCase()}
 재실: ${LIVE.src ? (LIVE.present ? '감지' : '없음') : '레이더 미연결'} / 낙상 신호: ${S.mode === 'normal' ? '없음' : '감지'}
 높이(Z): ${typeof zLive === 'function' && zLive() ? LIVE.z.v.toFixed(2) + 'm (실측)' : '수신 없음'} / 호흡수: 센서 미제공 (확인 필요)` : `[센서 데이터 · 시뮬레이션]
-노드: 대구 102동 거실 #1 / 상태: ${S.mode.toUpperCase()}
+노드: ${CUR.name} / 상태: ${S.mode.toUpperCase()}
 좌표: X=${S.x.toFixed(2)}m, Y=${S.y.toFixed(2)}m, Z=${S.z.toFixed(2)}m (평상시 ${STAND_Z}m, 낙상 임계 ${C.th}m)
 호흡: ${Math.round(S.bpm)} bpm`}
 유예 반응: ${S.mode === 'emergency' ? C.grace + '초 무반응' : S.mode === 'grace' ? '검증 중' : '해당 없음'}`;
@@ -2167,11 +2238,11 @@ ${data()}`, { onText: ({ text }) => { out.innerHTML = '<div class="cur">' + md(t
 - ${P.name} · ${P.age}세 ${P.sex} · 혈액형 ${P.blood}
 - 기저질환 ${P.cond || '없음'} · 복용약 ${P.meds || '없음'}
 **2. 상황 요약**
-- 거실 #1, ${REAL ? (al ? `레이더 낙상 신호 후 ${C.grace}초 기립 없음` : '낙상 신호 없음') + ' · 호흡수 확인 필요(센서 미제공)' : `${al ? `Z축 ${STAND_Z}m → ${S.z.toFixed(2)}m 급감 후 무반응` : '평상시 활동 상태'} · 호흡 ${Math.round(S.bpm)} bpm`}
+- ${CUR.room}, ${REAL ? (al ? `레이더 낙상 신호 후 ${C.grace}초 기립 없음` : '낙상 신호 없음') + ' · 호흡수 확인 필요(센서 미제공)' : `${al ? `Z축 ${STAND_Z}m → ${S.z.toFixed(2)}m 급감 후 무반응` : '평상시 활동 상태'} · 호흡 ${Math.round(S.bpm)} bpm`}
 **3. 위험도**
 - ${S.mode === 'emergency' ? '높음 · 즉시 출동 권장' : S.mode === 'grace' ? '주의 · 유예 검증 중' : '낮음'}${/골다공/.test(P.cond || '') ? ' · 골다공증으로 골절 가능성 확인 필요' : ''}
 **4. 구급대 권장 조치**
-- ${REAL ? '거실 #1 진입' : `거실 X ${S.x.toFixed(1)}m · Y ${S.y.toFixed(1)}m 진입`}, 의식·호흡 확인 및 경추 보호`;
+- ${REAL ? `${CUR.room} 진입` : `${CUR.room} X ${S.x.toFixed(1)}m · Y ${S.y.toFixed(1)}m 진입`}, 의식·호흡 확인 및 경추 보호`;
     }
     out.innerHTML = md(text) + src(fromAi);
     $('mSum').innerHTML = md(text);
@@ -2187,7 +2258,7 @@ ${data()}`, { onText: ({ text }) => { out.innerHTML = '<div class="cur">' + md(t
       lock(true); badge('멘트 생성 중...', 'work');
       $('tts').textContent = '안내 멘트를 만드는 중...';
       const sit = S.mode === 'normal' ? '평상시 생활 중' : S.mode === 'grace' ? '낙상이 의심되어 반응을 확인해야 하는 상황' : '낙상 후 무반응으로 보호자와 119에 알림이 간 상황';
-      t = await ask(`${P.age}세 어르신(호칭: "${call}")이 거실에서 ${sit}입니다. 보행 상태: ${P.mob || '미상'}. 허브 스피커로 송출할 다정하고 또박또박한 한국어 안내 문장을 2문장 이내로 쓰세요. 따옴표·머리말 없이 문장만.`);
+      t = await ask(`${P.age}세 어르신(호칭: "${call}")이 ${CUR.room}에서 ${sit}입니다. 보행 상태: ${P.mob || '미상'}. 허브 스피커로 송출할 다정하고 또박또박한 한국어 안내 문장을 2문장 이내로 쓰세요. 따옴표·머리말 없이 문장만.`);
       lock(false);
     }
     const fromAi = !!t;
@@ -2241,7 +2312,7 @@ ${data()}`, { json:true });
   function defaultRules(m){
     if (m === 'emergency') return { tag:'🚨 긴급 상황 비상 수칙', items:['119 구급대 진입을 위해 현관 개방 준비','무리하게 일으키지 말고 호흡 유지 후 대기','1순위 보호자에게 위치·상황 즉시 공유'] };
     if (m === 'grace') return { tag:'🟡 낙상 의심 유예 상황 수칙', items:['천천히 호흡하며 손끝이나 발끝을 움직이세요','괜찮다면 손을 크게 흔들어 신호를 주세요',`${C.grace}초 무반응 시 보호자와 119에 자동 전송됩니다`] };
-    return { tag:'거실 노드 권장 케어 수칙', items:['야간 거실 통로에 LED 동작감지 야광등 배치','화장실 입구와 소파 주변 미끄럼방지 패드 설치','SafeWave mmWave 레이더 24시간 감지 중'] };
+    return { tag:`${CUR.room} 노드 권장 케어 수칙`, items:[`야간 ${CUR.room} 통로에 LED 동작감지 야광등 배치`,'화장실 입구와 소파 주변 미끄럼방지 패드 설치','SafeWave mmWave 레이더 24시간 감지 중'] };
   }
   function setRules(r, fromAi){
     $('rules').className = 'rules' + (S.mode === 'normal' ? '' : ' ' + S.mode);
@@ -2527,7 +2598,7 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
   if ('serial' in navigator) navigator.serial.addEventListener('disconnect', e => { if (usb && e.target === usb.port){ log('[USB] 보드가 뽑혔습니다', 'wn'); disconnectUsb(true); } });
 
   /* ---------- 원격 (Firebase 실시간 DB · 누가 열어도 자동 연결) ---------- */
-  const FB = { url: 'https://y-csts-default-rtdb.asia-southeast1.firebasedatabase.app', key: 'sw012b30e61a4cb665482a', node: 'daegu-102-1' };
+  const FB = { url: 'https://y-csts-default-rtdb.asia-southeast1.firebasedatabase.app', key: 'sw012b30e61a4cb665482a', node: CUR.id };
   const fbPath = p => `${FB.url}/safewave/${FB.key}${p}.json?auth=${encodeURIComponent(SWAuth.token())}`;   // 로그인 토큰을 붙여 요청
   let lastUp = null, lastUpAt = 0;
   // 몇 초마다 "마지막으로 받은 것 이후"만 받아오기 (실시간 연결 대신. close() 로 멈춤)
@@ -2922,7 +2993,7 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
     if (LIVE.src && S.mode === 'normal' && LIVE.present === false && !S.rest){
       $('presence').textContent = '○ 부재 · 감지 구역에 사람 없음';
     }
-    alarm.set(S.mode);
+    alarm.set(worstMode());   // 지금 보는 방 + 다른 방 중 가장 위급한 상태로 경보
     if (typeof liveUi === 'function' && $('lvDot')) liveUi();
   };
 
@@ -2944,7 +3015,7 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
   };
   setInterval(liveUi, 1000);
   liveUi();
-  if (REAL) SWAuth.ready.then(connectRemote);   // 승인된 회원으로 로그인하면 자동으로 실시간 수신 시작
+  if (REAL && !BOTH) SWAuth.ready.then(connectRemote);   // 승인된 회원으로 로그인하면 자동으로 실시간 수신 시작 (함께 보기는 방 화면들이 각자 받음)
   SWAuth.onRefresh(() => {                       // 로그인 토큰이 바뀌면 실시간 연결을 조용히 다시 맺음
     if (!remote) return;
     try{ remote.es.close(); remote.ev.close(); remote.zh.close(); }catch(e){}
@@ -3106,6 +3177,136 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
   }
   window.swLogShared = logShared;   // 회원 관리(로그인 부분)에서도 기록 남기기
 
+  // ---- 방(노드) 바꾸기 + 다른 방 지켜보기 ----
+  // 방을 바꾸면 그 방 값으로 처음부터 다시 불러옴 (새로고침). 보고 있지 않은 방도 상태는 계속 받아서
+  // 낙상이 의심되면 맨 위에 띄우고 경보를 울림 (그 방 보기 버튼)
+  // 보는 방식 바꾸기: 방 id 하나 또는 'both'. 고른 것은 이 브라우저에 기억하고 새로 불러옴
+  function setRoomView(v){
+    if (EMBED) return;
+    if (v === (BOTH ? 'both' : CUR.id)){ go('live'); return; }
+    try{ localStorage.setItem('sw-view', v); localStorage.setItem('sw-node', v === 'both' ? CUR.id : v); }catch(e){}
+    const u = new URL(location.href); u.searchParams.delete('node'); location.href = u.toString();
+  }
+  const switchRoom = id => setRoomView(id);
+  document.querySelectorAll('.nav button[data-view]').forEach(b => b.addEventListener('click', () => setRoomView(b.dataset.view)));
+  document.querySelectorAll('.roomName').forEach(e => e.textContent = CUR.room);
+  document.querySelectorAll('.nodeName').forEach(e => e.textContent = BOTH ? '거실 · 큰방' : CUR.name);
+  var OTHER = {};   // var: 위쪽 화면 그리기가 먼저 불려도 안전하게
+  var BST = {};     // 함께 보기: 방 화면들이 알려 주는 상태 {id: {mode, left, at}}
+  // 위쪽 방 버튼 = 켜고 끄는 스위치. 거실·큰방 둘 다 켜면 나란히, 하나만 켜면 그 방만 (최소 하나는 켜져 있음)
+  function roomBtns(){
+    const box = $('roomBtns'); if (!box) return;
+    box.textContent = '';
+    NODES.forEach(n => {
+      const on = BOTH || n === CUR;
+      const o = OTHER[n.id], bs = BST[n.id];
+      const st = BOTH ? (bs && Date.now() - bs.at < 15000 ? bs.mode : 'off') : n === CUR ? S.mode : (o && o.fresh ? o.state : 'off');
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'roomb' + (on ? ' on' : '') + ' st-' + st;
+      b.textContent = (on ? '✓ ' : '') + n.room; b.title = n.name + (st === 'off' && !on ? ' · 연결 안 됨' : '') + (on ? ' · 누르면 끄기' : ' · 누르면 같이 보기');
+      b.setAttribute('aria-pressed', String(on));
+      b.onclick = () => {
+        if (BOTH) setRoomView(NODES.find(x => x !== n).id);   // 둘 다 켜짐 → 누른 방을 끄고 남은 방만
+        else if (n === CUR) go('live');                   // 하나만 켜진 방 → 끌 수 없음 (그 방 화면으로)
+        else setRoomView('both');                             // 다른 방을 켬 → 나란히
+      };
+      box.appendChild(b);
+    });
+  }
+  function bothWorst(){
+    let w = 'normal';
+    Object.values(BST || {}).forEach(s => { if (Date.now() - s.at < 15000 && (s.mode === 'emergency' || (s.mode === 'grace' && w === 'normal'))) w = s.mode; });
+    return w;
+  }
+  // ---- 함께 보기: 방마다 작은 화면(같은 페이지 ?embed=1)을 나란히 띄우고, 경보음은 이 페이지가 한 번에 울림 ----
+  if (BOTH){
+    const grid = $('bothGrid');
+    NODES.forEach(n => {
+      const col = document.createElement('section'); col.className = 'bothcol glass';
+      const hd = document.createElement('div'); hd.className = 'bothhd';
+      const t = document.createElement('b'); t.textContent = n.name;
+      const st = document.createElement('span'); st.className = 'bst'; st.id = 'bst-' + n.id; st.textContent = '연결 중…';
+      const op = document.createElement('button'); op.type = 'button'; op.className = 'lvb'; op.textContent = `${n.room}만 보기`; op.onclick = () => setRoomView(n.id);
+      hd.append(t, st, op);
+      const f = document.createElement('iframe'); f.title = n.name + ' 실시간 관제'; f.src = `?node=${encodeURIComponent(n.id)}&embed=1`; f.loading = 'eager';
+      col.append(hd, f); grid.appendChild(col);
+    });
+    window.addEventListener('message', e => {
+      if (e.origin !== location.origin || !e.data || e.data.sw !== 'mode') return;
+      const id = e.data.node, prev = BST[id] && BST[id].mode;
+      BST[id] = { mode: e.data.mode, left: e.data.left, at: Date.now() };
+      const n = nodeOf(id), el = $('bst-' + id);
+      if (el) { el.className = 'bst ' + e.data.mode; el.textContent = e.data.mode === 'emergency' ? '🚨 긴급' : e.data.mode === 'grace' ? `⚠ 유예 ${e.data.left != null ? Math.ceil(e.data.left) + '초' : ''}` : e.data.live ? '● 정상' : '○ 보드 대기'; }
+      if (n && prev && prev !== e.data.mode && e.data.mode !== 'normal') log(`[${n.room}] ${e.data.mode === 'emergency' ? '긴급 · 낙상 확정' : '낙상 의심 · 유예 시작'}`, e.data.mode === 'emergency' ? 'cr' : 'wn');
+      alarm.set(bothWorst()); render(); roomBtns();
+    });
+    $('bothSnd').onclick = () => {
+      if (alarm.ready() && !LS.get('mute')){ LS.set('mute', true); alarm.stopSiren(); $('bothSnd').textContent = '🔇 경보음 꺼짐'; }
+      else { LS.set('mute', false); alarm.unlock(); alarm.beep(880, 0.2); alarm.mode = ''; alarm.set(bothWorst()); $('bothSnd').textContent = '🔔 경보음 켜짐'; }
+    };
+    setInterval(() => { alarm.set(bothWorst()); roomBtns(); }, 2000);
+    go('both');
+  }
+  // 방 화면(embed): 자기 상태를 바깥 페이지에 알림 (소리는 바깥에서 한 번만)
+  function embedPost(){
+    if (!EMBED || window.parent === window) return;
+    try{ window.parent.postMessage({ sw: 'mode', node: CUR.id, mode: S.mode, left: S.mode === 'grace' ? S.graceLeft : null, live: !!LIVE.src }, location.origin); }catch(e){}
+  }
+  if (EMBED) setInterval(embedPost, 1000);
+  if (!BOTH) go(S.tab || 'live');   // 메뉴에 지금 방 탭 표시
+  function worstMode(){
+    if (EMBED){ embedPost(); return 'normal'; }   // 방 화면은 소리 안 냄 (바깥 페이지가 울림)
+    if (BOTH) return bothWorst();
+    let w = S.mode;
+    Object.values(OTHER || {}).forEach(o => { if (o.fresh && (o.state === 'emergency' || (o.state === 'grace' && w === 'normal'))) w = o.state; });
+    return w;
+  }
+  function roomAlert(){
+    let el = $('roomAlert');
+    const bad = Object.values(OTHER).filter(o => o.fresh && (o.state === 'grace' || o.state === 'emergency'));
+    if (!bad.length){ if (el) el.hidden = true; return; }
+    if (!el){ el = document.createElement('div'); el.id = 'roomAlert'; el.setAttribute('role', 'alert'); document.body.prepend(el); }
+    el.hidden = false; el.textContent = '';
+    bad.forEach(o => {
+      const row = document.createElement('div'); row.className = 'ra ' + o.state;
+      const tx = document.createElement('span');
+      tx.textContent = o.state === 'emergency' ? `🚨 ${o.n.room} 긴급 · 낙상 확정 (무반응)` : `⚠ ${o.n.room} 낙상 의심 · 유예 ${o.node && o.node.graceLeft != null ? o.node.graceLeft + '초 남음' : '중'}`;
+      const b = document.createElement('button'); b.type = 'button'; b.textContent = `${o.n.room} 보기`; b.onclick = () => switchRoom(o.n.id);
+      row.append(tx, b); el.appendChild(row);
+    });
+  }
+  function watchOthers(){
+    NODES.filter(n => n !== CUR).forEach(n => {
+      if (OTHER[n.id] && OTHER[n.id].es) return;
+      const es = new EventSource(fbPath(`/nodes/${n.id}`));
+      const o = OTHER[n.id] = { es, n, node: null, lastUp: null, upAt: 0, fresh: false, state: 'off' };
+      const on = e => {
+        let m; try{ m = JSON.parse(e.data); }catch(_){ return; }
+        if (m.path === '/') o.node = m.data;
+        else if (o.node){ const k = m.path.replace(/^\//, ''); if (e.type === 'patch') Object.assign(o.node, m.data); else o.node[k] = m.data; }
+        if (!o.node) return;
+        if (o.node.up !== o.lastUp){ o.upAt = o.lastUp === null ? 0 : Date.now(); o.lastUp = o.node.up; }
+        const prev = o.state;
+        o.state = o.node.state || 'off';
+        o.fresh = Date.now() - o.upAt < 10000;
+        if (o.fresh && o.state !== prev && (o.state === 'grace' || o.state === 'emergency'))
+          log(`[${n.room}] ${o.state === 'emergency' ? '긴급 · 낙상 확정' : '낙상 의심 · 유예 시작'} (다른 방)`, o.state === 'emergency' ? 'cr' : 'wn');
+        roomAlert(); roomBtns(); alarm.set(worstMode());
+      };
+      es.addEventListener('put', on); es.addEventListener('patch', on);
+      es.addEventListener('auth_revoked', () => { es.close(); o.es = null; });
+      es.onerror = () => { if (es.readyState === 2) o.es = null; };
+    });
+  }
+  setInterval(() => {   // 다른 방 보드가 꺼지면(10초 무소식) 표시 끄기
+    let ch = false;
+    Object.values(OTHER).forEach(o => { const f = Date.now() - o.upAt < 10000; if (f !== o.fresh){ o.fresh = f; ch = true; } });
+    if (ch){ roomAlert(); alarm.set(worstMode()); }
+    roomBtns();
+  }, 2000);
+  roomBtns();
+  if (REAL && !BOTH && !EMBED) SWAuth.ready.then(watchOthers);   // 함께 보기·방 화면에선 필요 없음 (연결 수 아끼기)
+  SWAuth.onRefresh(() => { Object.values(OTHER).forEach(o => { try{ o.es && o.es.close(); }catch(e){} o.es = null; }); watchOthers(); });
+
   // ---- 펌웨어 무선 업데이트 (관리자): .bin 을 12KB 씩 base64 로 ota/<노드>/c/<번호> 에 올리고 → meta → cmd "OTA" ----
   // 보드가 조각을 받아 새 펌웨어로 바꾸고 ota/<노드>/status 에 진행률을 올림. 끝나면 조각은 지움 (와이파이 비밀번호가 들어 있어서)
   const OTA = { busy: false, file: null, timer: 0 };
@@ -3130,6 +3331,15 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
     const f = OTA.file; if (!f || OTA.busy) return;
     const buf = new Uint8Array(await f.arrayBuffer());
     if (buf[0] !== 0xE9){ $('otaRes').textContent = 'ESP32 펌웨어 파일이 아닙니다 (.ino.bin 을 골라 주세요)'; return; }
+    // 다른 방 펌웨어를 올리면 그 보드가 다른 방인 척하게 됨 → 파일 안의 방 표시(SWNODE=…)로 막음
+    const txt = new TextDecoder('latin1').decode(buf), mi = txt.indexOf('SWNODE=');
+    const fileNode = mi >= 0 ? txt.slice(mi + 7, txt.indexOf(';', mi)) : null;
+    if (fileNode && fileNode !== FB.node){
+      const r = (NODES.find(n => n.id === fileNode) || {}).room || fileNode;
+      $('otaRes').textContent = `이 파일은 ${r}용 펌웨어입니다. 지금 고른 방은 ${CUR.room} 이에요 (위에서 방을 바꾸거나 build\\${CUR.room} 폴더 파일을 고르세요)`;
+      return;
+    }
+    if (!fileNode && !confirm('방 표시가 없는 예전 펌웨어 파일입니다. 그래도 올릴까요?')) return;
     OTA.busy = true; otaShow();
     const before = (LIVE.info || {}).fw || '';
     const n = Math.ceil(buf.length / OTA_CHUNK);
@@ -3182,9 +3392,9 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
     }, 1500);
   }
   twoStep($('otaGo'), '정말 업데이트', '한 번 더 누르면 보드 펌웨어를 바꿉니다. 1~3분 걸리고, 끝나면 보드가 몇 초 동안 다시 켜집니다.', otaStart, 'otaRes');
-  if (REAL) SWAuth.ready.then(logsConnect);
+  if (REAL && !BOTH) SWAuth.ready.then(logsConnect);
   SWAuth.onRefresh(() => { if (LGS.es){ try{ LGS.es.close(); }catch(e){} LGS.es = null; } logsConnect(); });
-  if (REAL) SWAuth.ready.then(shareConnect);
+  if (REAL && !BOTH) SWAuth.ready.then(shareConnect);
   SWAuth.onRefresh(() => { if (SH.es){ try{ SH.es.close(); }catch(e){} SH.es = null; } shareConnect(); });
 })();
 </script>
