@@ -998,7 +998,7 @@ html:not(.role-admin) #view-profile :is(input,select,textarea){border-color:tran
   <section class="glass panel" style="margin-top:18px" aria-labelledby="hOta">
     <div class="ph"><div class="tt"><div class="ico" style="background:rgba(167,139,250,.14);color:#A78BFA;border:1px solid rgba(167,139,250,.4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg></div><div><h3 id="hOta">펌웨어 무선 업데이트</h3><p>USB 없이 인터넷으로 보드 펌웨어를 바꿉니다</p></div></div></div>
     <div class="otalist" id="otaList"></div>
-    <span class="help" style="display:block;margin-top:10px">장치마다 파일이 달라요. 거실 = <code>SafeWave_Node\build\거실\SafeWave_Node.ino.bin</code>, 큰방 = <code>…\build\큰방\…</code>. 다른 장치 파일을 고르면 막아 줍니다. 받는 동안에도 감지는 계속되고, 실패하면 지금 펌웨어 그대로 동작합니다. 파일에는 와이파이 비밀번호가 들어 있어서 관리자만 볼 수 있게 올리고, 끝나면 지웁니다.</span>
+    <span class="help" style="display:block;margin-top:10px">장치마다 파일이 달라요. 거실 = <code>SafeWave_Node\build\거실\SafeWave_Node.ino.bin</code>, 큰방 = <code>…\build\큰방\…</code>, 중간 컨트롤 = <code>SafeWave_Hub\build\SafeWave_Hub.ino.bin</code>. 다른 장치 파일을 고르면 막아 줍니다. 받는 동안에도 감지는 계속되고, 실패하면 지금 펌웨어 그대로 동작합니다. 파일에는 와이파이 비밀번호가 들어 있어서 관리자만 볼 수 있게 올리고, 끝나면 지웁니다.</span>
   </section>
   <div class="actions"><span class="saved" id="stSaved">✓ 저장되었습니다</span><button type="button" class="ghost" id="stReset">기본값</button><button type="button" class="primary" id="stSave">저장</button></div>
 </div>
@@ -2875,20 +2875,13 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
     }
     wfRender();
   }
-  function wfStream(){
-    if (WF.es || !SWAuth.token()) return;
-    const es = new EventSource(fbPath(`/wifiinfo/${FB.node}`));
-    WF.es = es;
-    const on = e => {
-      let m; try{ m = JSON.parse(e.data); }catch(_){ return; }
-      if (m.path === '/') wfApply(m.data);
-      else wfLoad();
-    };
-    es.addEventListener('put', on); es.addEventListener('patch', on);
-    es.addEventListener('auth_revoked', () => { es.close(); WF.es = null; SWAuth.refreshNow && SWAuth.refreshNow(); });
-    es.onerror = () => { if (es.readyState === 2){ WF.es = null; } };
-  }
-  setInterval(() => { if (WF.pend && (!WF.es || WF.es.readyState !== 1)) wfLoad(); else if (WF.pend) wfApply(WF.info); }, 3000);   // 구독이 안 될 때 대비
+  // 와이파이 결과 받기: 실시간 연결 대신 확인 (명령을 보낸 뒤엔 1.5초마다, 설정 화면을 보는 동안은 8초마다)
+  function wfStream(){ /* 실시간 연결 안 씀 (브라우저 연결 수 제한) */ }
+  let wfLastLoad = 0;
+  setInterval(() => {
+    const v = $('view-settings'); const vis = v && !v.hidden;
+    if (WF.pend || (vis && Date.now() - wfLastLoad > 8000)){ wfLastLoad = Date.now(); wfLoad(); }
+  }, 1500);
   async function wfLoad(){
     let info;
     try{
@@ -3124,42 +3117,39 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
       if (!r.ok) log(`[공유] ${what} 저장 실패 · HTTP ${r.status}${r.status === 401 ? ' (Firebase 규칙에 shared 추가 필요)' : ''} · 이 화면에만 적용됨`, 'wn');
     }catch(e){ log(`[공유] ${what} 저장 실패: ${e.message} · 이 화면에만 적용됨`, 'wn'); }
   }
+  // 공유 설정 받기: 실시간 연결 대신 3초마다 확인 (브라우저는 한 서버에 연결을 6개까지만 열어서, 탭이 여러 개면 다른 요청이 막힘)
   function shareConnect(){
     if (SH.es || !SWAuth.token()) return;
-    const es = new EventSource(fbPath(`/shared/${FB.node}`));
-    SH.es = es;
-    let doc = null;
-    const on = e => {
-      let m; try{ m = JSON.parse(e.data); }catch(_){ return; }
-      if (m.path === '/' && e.type === 'put'){
-        doc = m.data;
-        // 처음 쓰는 경우: 공유 값이 아직 없으면 관리자의 이 브라우저 설정을 올려서 시작
-        if (SH.first && !doc){
-          SH.first = false;
-          if (SWAuth.isAdmin()){
-            const init = { zones: customZones.length ? customZones : null, profile: P };
-            SH_KEYS.forEach(k => init[k] = LS_get(k));
-            shareSave(init, '처음 공유');
+    let last = undefined, stop = false, t = 0, warned = false;
+    const tick = async () => {
+      if (stop) return;
+      try{
+        const r = await fetch(fbPath(`/shared/${FB.node}`));
+        if (r.status === 401 || r.status === 403){ if (!warned){ warned = true; log('[공유] 공유 설정을 읽을 권한이 없습니다 (Firebase 규칙에 shared 추가 필요) · 이 화면 설정만 씀', 'wn'); } }
+        else if (r.ok){
+          const txt = await r.text();
+          if (txt !== last){
+            last = txt;
+            const doc = JSON.parse(txt);
+            if (SH.first && !doc){   // 처음 쓰는 경우: 공유 값이 아직 없으면 관리자의 이 브라우저 설정을 올려서 시작
+              SH.first = false;
+              if (SWAuth.isAdmin()){
+                const init = { zones: customZones.length ? customZones : null, profile: P };
+                SH_KEYS.forEach(k => init[k] = LS_get(k));
+                shareSave(init, '처음 공유');
+              }
+            } else {
+              if (SH.first && doc && !doc.profile && SWAuth.isAdmin()) shareSave({ profile: P }, '대상자 정보 처음 공유');
+              shareApply(doc, true);
+              SH.first = false;
+            }
           }
-          return;   // 공유 값이 없을 땐 이 화면 설정을 지우지 않음
         }
-        // 대상자 정보가 아직 공유 안 됐으면 관리자의 이 브라우저 값을 올림 (한 번)
-        if (SH.first && doc && !doc.profile && SWAuth.isAdmin()) shareSave({ profile: P }, '대상자 정보 처음 공유');
-      } else if (m.path === '/'){            // 전체 patch: 바뀐 칸만 합침 (null 은 지움)
-        doc = Object.assign({}, doc || {}, m.data);
-        Object.keys(m.data || {}).forEach(k => { if (m.data[k] == null) delete doc[k]; });
-      } else {                               // 일부 칸만 바뀜 (예: /mute, /test) → 전체를 다시 받아서 정확히 맞춤
-        fetch(fbPath(`/shared/${FB.node}`)).then(r => r.ok ? r.json() : null).then(d => { doc = d; shareApply(doc, true); SH.first = false; }).catch(() => {});
-        return;
-      }
-      shareApply(doc, true);
-      SH.first = false;
+      }catch(e){}
+      if (!stop) t = setTimeout(tick, 3000);
     };
-    es.addEventListener('put', on); es.addEventListener('patch', on);
-    es.addEventListener('auth_revoked', () => { es.close(); SH.es = null; SWAuth.refreshNow(); });
-    const denied = () => { es.close(); SH.es = null; log('[공유] 공유 설정을 읽을 권한이 없습니다 (Firebase 규칙에 shared 추가 필요) · 이 화면 설정만 씀', 'wn'); };
-    es.addEventListener('cancel', denied);
-    es.onerror = () => { if (es.readyState === 2) denied(); };
+    SH.es = { close(){ stop = true; clearTimeout(t); } };
+    tick();
   }
   // ---- 사람이 한 일 기록: logs/<노드> 에 남기고 모든 화면이 같은 기록을 봄 ----
   var LGS = { es: null };
@@ -3280,27 +3270,31 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
       row.append(tx, b); el.appendChild(row);
     });
   }
+  // 다른 방 지켜보기: 2초마다 그 방 상태를 확인 (실시간 연결은 지금 보는 방 하나만 씀 · 브라우저 연결 수 아끼기)
   function watchOthers(){
     NODES.filter(n => n !== CUR).forEach(n => {
       if (OTHER[n.id] && OTHER[n.id].es) return;
-      const es = new EventSource(fbPath(`/nodes/${n.id}`));
-      const o = OTHER[n.id] = { es, n, node: null, lastUp: null, upAt: 0, fresh: false, state: 'off' };
-      const on = e => {
-        let m; try{ m = JSON.parse(e.data); }catch(_){ return; }
-        if (m.path === '/') o.node = m.data;
-        else if (o.node){ const k = m.path.replace(/^\//, ''); if (e.type === 'patch') Object.assign(o.node, m.data); else o.node[k] = m.data; }
-        if (!o.node) return;
-        if (o.node.up !== o.lastUp){ o.upAt = o.lastUp === null ? 0 : Date.now(); o.lastUp = o.node.up; }
-        const prev = o.state;
-        o.state = o.node.state || 'off';
-        o.fresh = Date.now() - o.upAt < 10000;
-        if (o.fresh && o.state !== prev && (o.state === 'grace' || o.state === 'emergency'))
-          log(`[${n.room}] ${o.state === 'emergency' ? '긴급 · 낙상 확정' : '낙상 의심 · 유예 시작'} (다른 방)`, o.state === 'emergency' ? 'cr' : 'wn');
-        roomAlert(); roomBtns(); alarm.set(worstMode());
+      let stop = false, t = 0;
+      const o = OTHER[n.id] = { es: { close(){ stop = true; clearTimeout(t); } }, n, node: null, lastUp: null, upAt: 0, fresh: false, state: 'off' };
+      const tick = async () => {
+        if (stop) return;
+        try{
+          const r = await fetch(fbPath(`/nodes/${n.id}`));
+          const d = r.ok ? await r.json() : null;
+          if (d){
+            o.node = d;
+            if (d.up !== o.lastUp){ o.upAt = o.lastUp === null ? 0 : Date.now(); o.lastUp = d.up; }
+            const prev = o.state;
+            o.state = d.state || 'off';
+            o.fresh = Date.now() - o.upAt < 10000;
+            if (o.fresh && o.state !== prev && (o.state === 'grace' || o.state === 'emergency'))
+              log(`[${n.room}] ${o.state === 'emergency' ? '긴급 · 낙상 확정' : '낙상 의심 · 유예 시작'} (다른 방)`, o.state === 'emergency' ? 'cr' : 'wn');
+            roomAlert(); roomBtns(); alarm.set(worstMode());
+          }
+        }catch(e){}
+        if (!stop) t = setTimeout(tick, 2000);
       };
-      es.addEventListener('put', on); es.addEventListener('patch', on);
-      es.addEventListener('auth_revoked', () => { es.close(); o.es = null; });
-      es.onerror = () => { if (es.readyState === 2) o.es = null; };
+      tick();
     });
   }
   setInterval(() => {   // 다른 방 보드가 꺼지면(10초 무소식) 표시 끄기
@@ -3319,7 +3313,7 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
   const OTA_DEV = [
     { id: 'daegu-102-1', name: '거실 레이더', sub: '대구 102동 거실 #1', folder: '거실' },
     { id: 'daegu-102-2', name: '큰방 레이더', sub: '대구 102동 큰방 #2', folder: '큰방' },
-    { id: 'hub-1', name: '중간 컨트롤', sub: '준비 중 · 장치를 만들면 여기서 업데이트합니다', soon: true }
+    { id: 'hub-1', name: '중간 컨트롤', sub: '주방 식탁 경고 스피커', folder: 'hub', path: 'SafeWave_Hub\\build\\SafeWave_Hub.ino.bin', hub: true }
   ];
   const OTA = { busy: null };   // 지금 업데이트 중인 장치 id (한 번에 하나만)
   const OD = {};                // 장치별 화면·상태
@@ -3343,6 +3337,17 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
       const msg = el('div', 'otamsg', dv.soon ? '중간 컨트롤 장치를 만들면 여기에 버전과 업데이트가 나옵니다.' : '');
       msg.id = 'otaMsg-' + dv.id;
       row.append(hd, bar, ctl, msg); box.appendChild(row);
+      if (dv.hub){   // 중간 컨트롤 스피커 시험 버튼
+        const t = el('div', 'otactl');
+        [['안내 음성 시험', 'TEST'], ['경고음 시험', 'SIREN'], ['소리 멈춤', 'STOP']].forEach(([tx, c]) => {
+          const b = el('button', 'ghost', tx); b.type = 'button';
+          b.onclick = async () => {
+            try{ const r = await fetch(fbPath(`/cmd/${dv.id}`), { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(c) }); msg.textContent = r.ok ? `${tx} 명령 보냄 (3초 안에 스피커에서 나와요)` : '보내기 실패 · HTTP ' + r.status; }catch(e){ msg.textContent = '보내기 실패: ' + e.message; }
+          };
+          t.appendChild(b);
+        });
+        row.insertBefore(t, msg);
+      }
       OD[dv.id] = { dv, fw, bar, barIn, file, go, msg, node: null, upAt: 0, lastUp: null, f: null };
       if (dv.soon) return;
       file.addEventListener('change', () => {
@@ -3390,7 +3395,7 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
     const fileNode = mi >= 0 ? txt.slice(mi + 7, txt.indexOf(';', mi)) : null;
     if (fileNode && fileNode !== id){
       const other = OTA_DEV.find(x => x.id === fileNode);
-      say(`이 파일은 ${other ? other.name : fileNode}용이에요. ${dv.name}에는 build\\${dv.folder} 폴더 파일을 고르세요.`);
+      say(`이 파일은 ${other ? other.name : fileNode}용이에요. ${dv.name}에는 ${dv.path || 'SafeWave_Node\\build\\' + dv.folder + '\\SafeWave_Node.ino.bin'} 을 고르세요.`);
       return;
     }
     if (!fileNode && !confirm('장치 표시가 없는 예전 펌웨어 파일입니다. 그래도 ' + dv.name + '에 올릴까요?')) return;
