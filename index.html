@@ -2165,13 +2165,15 @@ window.SWAuth = (function(){
 
   /* ---------- Claude ---------- */
   // Claude 연결 순서: ① claude.ai 안에서 열면 window.claude  ② 배포된 사이트면 내 서버 함수(/.netlify/functions/claude)  ③ 둘 다 없으면 예시 응답
-  const API = '/.netlify/functions/claude';
+  // Cloudflare Worker 주소 (비밀 아님. API 키는 Worker 안에만 있음). 비워 두면 예시 응답
+  const API = 'https://safewave-ai.dydgh12394.workers.dev';
+  const aiHeaders = () => { const h = { 'content-type': 'application/json' }; const t = window.SWAuth && SWAuth.token(); if (t) h.authorization = 'Bearer ' + t; return h; };
   let sample = null, server = false, ai = 'checking', busy = false, ruleMode = null;
   const badge = (txt, cls) => { const b = $('aiBadge'); b.textContent = txt; b.className = 'badge' + (cls ? ' '+cls : ''); };
   const idle = () => badge(ai === 'ready' ? (server ? 'Claude API 연결됨' : 'Claude 준비 완료') : ai === 'denied' ? '사용 거절 · 예시 응답' : ai === 'checking' ? '연결 확인 중' : '오프라인 · 예시 응답', ai === 'ready' ? 'ready' : '');
   (async () => {
     try{ if (window.claude && typeof window.claude.use === 'function') sample = await window.claude.use('sample'); }catch(e){ sample = null; }
-    if (!sample && /^https?:$/.test(location.protocol)){
+    if (!sample && /^https?:$/.test(location.protocol) && API){
       try{ const r = await fetch(API, { method:'GET', headers:{ 'accept':'application/json' } }); if (r.ok){ const j = await r.json(); server = !!(j && j.ok); } }catch(e){ server = false; }
     }
     ai = (sample || server) ? 'ready' : 'off';
@@ -2190,7 +2192,8 @@ window.SWAuth = (function(){
     }
     if (server){
       try{
-        const r = await fetch(API, { method:'POST', headers:{ 'content-type':'application/json' }, body: JSON.stringify({ prompt, json: !!json }) });
+        const r = await fetch(API, { method:'POST', headers: aiHeaders(), body: JSON.stringify({ prompt, json: !!json }) });
+        if (r.status === 401){ log('AI: 로그인한 승인 회원만 쓸 수 있어요 (예시 응답 표시)', 'wn'); return null; }
         if (r.status === 429){ log('AI 요청이 너무 잦습니다 · 1분 뒤 다시 시도하세요 (예시 응답 표시)', 'wn'); return null; }
         if (!r.ok){ console.warn('Claude 서버 함수 오류', r.status); return null; }
         const d = await r.json();
