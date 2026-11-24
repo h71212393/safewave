@@ -1655,6 +1655,13 @@ window.SWAuth = (function(){
     // ZONE_REAL: 실제 레이더 위치(X·Y)로 예외 구역을 판단할지.
     // 펌웨어가 점을 20바이트로 바르게 읽은 뒤 시험: 오른쪽 1m 이동 → X 1.27m 변화 (실제 움직임을 따라감) → 켬
     const ZONE_REAL = true;
+    // 새 펌웨어(zv 를 보냄)는 보드가 직접 예외 구역을 판단함 → 보드가 유예라고 하면 구역 밖이라는 뜻이라 그대로 유예
+    if (LIVE.src && LIVE.info && LIVE.info.zv != null){
+      S.rest = null; S.mode = 'grace'; S.graceLeft = C.grace; S.tx = S.x; S.ty = S.y; render();
+      log(`${C.grace}초 유예 진입${C.voice ? ' · 허브 음성 안내 송출' : ''}`, 'wn');
+      if (C.voice) speak();
+      return;
+    }
     const real = !!LIVE.src, hasPos = !real || (ZONE_REAL && posLive());
     const z = hasPos ? zoneAt(real ? LIVE.pos.x : S.x, real ? LIVE.pos.y : S.y) : null;
     if (z){
@@ -2407,11 +2414,16 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
       else if (Date.now() < S.ackUntil) return;
       else S.ackUntil = 0;   // 8초가 지나도 보드가 계속 경고면 확인이 안 전달된 것 → 다시 띄움
     }
+    // 새 펌웨어: 보드가 알려 주는 "예외 구역 휴식 중" 을 그대로 표시
+    if (info.zv != null && (st === 'normal' || st === 'empty')){
+      const r = info.rest ? `'${info.rest}' 예외 구역` : null;
+      if (r !== S.rest && S.mode === 'normal'){ S.rest = r; render(); }
+    }
     if (st === 'normal' || st === 'empty'){
       if (S.mode !== 'normal') toNormal(info.msg || (S.mode === 'grace' ? '[레이더] 유예 중 기립 확인 · 오탐지 자동 해제' : '[레이더] 정상 복귀'));
       else {
         // 예외 구역 휴식 끝: 구역을 벗어났거나(위치가 있을 때) 일어섰거나 사람이 나감
-        if (S.rest && (st === 'empty' || (posLive() && !zoneAt(LIVE.pos.x, LIVE.pos.y)) || (zLive() && LIVE.z.v > C.th + 0.35))){
+        if (info.zv == null && S.rest && (st === 'empty' || (posLive() && !zoneAt(LIVE.pos.x, LIVE.pos.y)) || (zLive() && LIVE.z.v > C.th + 0.35))){
           const where = S.rest; S.rest = null; log(`${where}에서 휴식 끝 · 정상 감시`, 'ok');
         }
         render();
@@ -2945,6 +2957,7 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
   var SH = { es: null, first: true, test: null };   // var: 위쪽 liveUi 가 먼저 불려도 안전하게
   function shareApply(d, fromStream){
     d = d || {};
+    SH.doc = d;
     const quiet = !fromStream || SH.first || Date.now() - (SH.ownAt || 0) < 4000;   // 내가 방금 바꾼 것이 되돌아온 경우는 알리지 않음
     const zs = Array.isArray(d.zones) ? d.zones : d.zones ? Object.values(d.zones) : [];
     const before = JSON.stringify([customZones, SH_KEYS.map(LS_get)]);
@@ -2952,6 +2965,8 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
     store.set('sw-zones', customZones);
     SH_KEYS.forEach(k => LS_set(k, d[k] == null || d[k] === false ? null : d[k]));
     renderZones(); syncAxisBtns();
+    // 구역·가운데 맞추기·반전이 바뀌어서 보드용 구역(bz)과 다르면 관리자 화면이 다시 계산해서 보드로 보냄
+    if (SWAuth.isAdmin() && d.bz !== boardZones()){ clearTimeout(SH.zTimer); SH.zTimer = setTimeout(() => syncBoardZones(), 800); }
     // 대상자 인적사항
     if (d.profile && typeof d.profile === 'object'){
       const np = Object.assign({}, DEF_PROFILE, d.profile);
@@ -2983,6 +2998,32 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
     }
   }
   // 경보음은 보호자(회원)도 바꿀 수 있어서 따로 저장 (규칙: shared/<노드>/mute 는 회원도 쓰기 가능)
+  // ---- 예외 구역을 보드에 보내기: 지도(방) 좌표 → 레이더 좌표(px·py) 로 바꿔서 shared/<노드>/bz 에 쓰고 cmd "Z" ----
+  // 가운데 맞추기·반전 값이 바뀌어도 레이더 좌표가 달라지니 다시 보냄
+  function boardZones(){
+    const off = LS_get('posOff') || [0, 0];
+    const fx = LS_get('flipX') ? -1 : 1, fy = LS_get('flipY') ? 1 : -1, sw = LS_get('swapXY');
+    const toRaw = (X, Y) => {   // setPos 의 mapXY 를 거꾸로
+      const a = X - ROOM / 2, b = Y - ROOM / 2;
+      const [ax, ay] = sw ? [b, a] : [a, b];
+      return [ax / fx + off[0], ay / fy + off[1]];
+    };
+    const M = 0.1;   // 위치가 조금 흔들려도 구역 안으로 보게 10cm 여유
+    // 직접 그린 예외 구역만 보냄 (기본 침대·소파는 지도 예시라 실제 가구 자리와 다를 수 있어서, 거기서 넘어져도 경보가 울려야 함)
+    return customZones.map(z => {
+      const p = toRaw(z.x - M, z.y - M), q = toRaw(z.x + z.w + M, z.y + z.h + M);
+      const nm = String(z.name || '구역').replace(/[|;"\\]/g, ' ').slice(0, 9);
+      return [nm, Math.min(p[0], q[0]), Math.max(p[0], q[0]), Math.min(p[1], q[1]), Math.max(p[1], q[1])].map((v, i) => i ? v.toFixed(2) : v).join('|');
+    }).join(';');
+  }
+  async function syncBoardZones(force){
+    if (!SWAuth.isAdmin() || !SWAuth.token()) return;
+    const bz = boardZones();
+    if (!force && SH.doc && SH.doc.bz === bz) return;
+    await shareSave({ bz }, '보드 예외 구역');
+    if (SH.doc) SH.doc.bz = bz;
+    sendSetting('Z');
+  }
   async function shareMute(m){
     if (!SWAuth.token()) return;
     SH.ownAt = Date.now();
