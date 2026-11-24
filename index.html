@@ -359,6 +359,17 @@ html.embed body{background:transparent}
 #roomAlert .ra.grace{background:rgba(251,191,36,.16);border:1px solid rgba(251,191,36,.6);color:#FCD34D}
 #roomAlert .ra.emergency{background:rgba(244,63,94,.2);border:1px solid rgba(251,113,133,.7);color:#FECDD3}
 #roomAlert button{border:0;border-radius:10px;padding:8px 14px;font:inherit;font-weight:800;background:#F8FAFC;color:#0F172A;min-height:40px;cursor:pointer}
+.otalist{display:grid;gap:12px}
+.otarow{border:1px solid var(--bd2);border-radius:14px;padding:14px;display:grid;gap:10px}
+.otarow.soon{opacity:.6}
+.otahd{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.otahd b{font-size:15.5px}
+.otahd .otaid{font-family:var(--mono);font-size:11.5px;color:var(--mu)}
+.otahd .otafw{margin-left:auto;font-family:var(--mono);font-size:12.5px;color:var(--tx2)}
+.otactl{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.otactl input[type=file]{flex:1;min-width:200px;background:#020617;border:1px solid var(--bd2);border-radius:10px;color:var(--tx);padding:8px;font:inherit;font-size:13px}
+.otamsg{font-size:12.5px;color:var(--mu)}
+.otactl .primary:disabled{opacity:.4;box-shadow:none;cursor:not-allowed}
 .otabar{height:10px;border-radius:99px;background:rgba(148,163,184,.18);overflow:hidden;margin-top:12px}
 .otabar-in{height:100%;width:0;background:linear-gradient(90deg,#A78BFA,#2DD4BF);transition:width .4s}
 .calbox{border:1px dashed var(--bd2);border-radius:12px;padding:12px}
@@ -986,16 +997,8 @@ html:not(.role-admin) #view-profile :is(input,select,textarea){border-color:tran
   </section>
   <section class="glass panel" style="margin-top:18px" aria-labelledby="hOta">
     <div class="ph"><div class="tt"><div class="ico" style="background:rgba(167,139,250,.14);color:#A78BFA;border:1px solid rgba(167,139,250,.4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg></div><div><h3 id="hOta">펌웨어 무선 업데이트</h3><p>USB 없이 인터넷으로 보드 펌웨어를 바꿉니다</p></div></div></div>
-    <dl class="sysinfo">
-      <dt>지금 펌웨어</dt><dd id="otaCur">—</dd>
-      <dt>업데이트 상태</dt><dd id="otaSt">—</dd>
-    </dl>
-    <div class="otabar" id="otaBarBox" hidden><div class="otabar-in" id="otaBar"></div></div>
-    <div class="fields" style="margin-top:14px">
-      <div class="f full"><label for="otaFile">새 펌웨어 파일 (.bin)</label><input id="otaFile" type="file" accept=".bin,application/octet-stream"></div>
-    </div>
-    <span class="help" style="display:block;margin-top:8px">아두이노 IDE의 <b>스케치 → 컴파일된 바이너리 내보내기</b>로 만든 <code>SafeWave_Node.ino.bin</code> 을 고르세요 (merged·bootloader 파일 말고). 방마다 파일이 달라요: <code>SafeWave_Node\build\<span class="roomName">거실</span>\SafeWave_Node.ino.bin</code> 받는 동안에도 감지는 계속되고, 실패하면 지금 펌웨어 그대로 동작합니다. 파일에는 와이파이 비밀번호가 들어 있어서 관리자만 볼 수 있게 올리고, 끝나면 지웁니다.</span>
-    <div class="actions" style="margin-top:12px"><span class="wfmu" id="otaRes" role="status"></span><button type="button" class="primary" id="otaGo" disabled>업로드하고 업데이트</button></div>
+    <div class="otalist" id="otaList"></div>
+    <span class="help" style="display:block;margin-top:10px">장치마다 파일이 달라요. 거실 = <code>SafeWave_Node\build\거실\SafeWave_Node.ino.bin</code>, 큰방 = <code>…\build\큰방\…</code>. 다른 장치 파일을 고르면 막아 줍니다. 받는 동안에도 감지는 계속되고, 실패하면 지금 펌웨어 그대로 동작합니다. 파일에는 와이파이 비밀번호가 들어 있어서 관리자만 볼 수 있게 올리고, 끝나면 지웁니다.</span>
   </section>
   <div class="actions"><span class="saved" id="stSaved">✓ 저장되었습니다</span><button type="button" class="ghost" id="stReset">기본값</button><button type="button" class="primary" id="stSave">저장</button></div>
 </div>
@@ -1018,7 +1021,7 @@ html:not(.role-admin) #view-profile :is(input,select,textarea){border-color:tran
 
 </main>
 
-<footer class="foot"><span>SafeWave mmWave Radar Intelligent Care Solution © 2026</span><span>대구 102동 60GHz 노드 #1 · <span id="footAi">Claude AI</span></span></footer>
+<footer class="foot"><span>SafeWave mmWave Radar Intelligent Care Solution © 2026</span><span>대구 102동 60GHz 노드 (거실 #1 · 큰방 #2) · <span id="footAi">Claude AI</span></span></footer>
 
 <div class="modal" id="modal" role="alertdialog" aria-modal="true" aria-labelledby="mT">
   <div class="mbox">
@@ -1588,7 +1591,7 @@ window.SWAuth = (function(){
     const vNow = BOTH ? 'both' : CUR.id;    // 방 탭(거실 관제·큰방 관제·함께 보기)
     document.querySelectorAll('.nav button[data-view]').forEach(b => { if ((tab === 'live' || tab === 'both') && b.dataset.view === vNow) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); });
     if (tab === 'profile') fillProfileForm();
-    if (tab === 'settings'){ fillSettingsForm(); if (window.swWifiLoad && SWAuth.token()) window.swWifiLoad(); }
+    if (tab === 'settings'){ fillSettingsForm(); if (window.swWifiLoad && SWAuth.token()) window.swWifiLoad(); if (window.swOtaInit && SWAuth.token()) window.swOtaInit(); }
     if (tab === 'users') SWAuth.loadUsers();
     if (tab === 'live') requestAnimationFrame(fitAll);
     window.scrollTo({ top:0, behavior: reduce ? 'auto' : 'smooth' });
@@ -3307,91 +3310,135 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
   if (REAL && !BOTH && !EMBED) SWAuth.ready.then(watchOthers);   // 함께 보기·방 화면에선 필요 없음 (연결 수 아끼기)
   SWAuth.onRefresh(() => { Object.values(OTHER).forEach(o => { try{ o.es && o.es.close(); }catch(e){} o.es = null; }); watchOthers(); });
 
-  // ---- 펌웨어 무선 업데이트 (관리자): .bin 을 12KB 씩 base64 로 ota/<노드>/c/<번호> 에 올리고 → meta → cmd "OTA" ----
-  // 보드가 조각을 받아 새 펌웨어로 바꾸고 ota/<노드>/status 에 진행률을 올림. 끝나면 조각은 지움 (와이파이 비밀번호가 들어 있어서)
-  const OTA = { busy: false, file: null, timer: 0 };
+  // ---- 펌웨어 무선 업데이트 (관리자): 장치마다 한 줄 (거실 레이더 · 큰방 레이더 · 중간 컨트롤) ----
+  // .bin 을 12KB 씩 base64 로 ota/<장치>/c/<번호> 에 올리고 → meta → cmd/<장치> "OTA"
+  // 보드가 조각을 받아 새 펌웨어로 바꾸고 ota/<장치>/status 에 진행률을 올림. 끝나면 조각은 지움 (와이파이 비밀번호가 들어 있어서)
+  const OTA_DEV = [
+    { id: 'daegu-102-1', name: '거실 레이더', sub: '대구 102동 거실 #1', folder: '거실' },
+    { id: 'daegu-102-2', name: '큰방 레이더', sub: '대구 102동 큰방 #2', folder: '큰방' },
+    { id: 'hub-1', name: '중간 컨트롤', sub: '준비 중 · 장치를 만들면 여기서 업데이트합니다', soon: true }
+  ];
+  const OTA = { busy: null };   // 지금 업데이트 중인 장치 id (한 번에 하나만)
+  const OD = {};                // 장치별 화면·상태
   const OTA_CHUNK = 12288;
-  function otaShow(){
-    const i = LIVE.info || {};
-    $('otaCur').textContent = i.fw ? i.fw : (LIVE.src ? '예전 펌웨어 (무선 업데이트 기능 없음 · USB로 한 번 올려야 함)' : '보드 연결 안 됨');
-    $('otaGo').disabled = OTA.busy || !OTA.file || !i.fw;
-  }
-  setInterval(() => { const v = $('view-settings'); if (v && !v.hidden && !OTA.busy) otaShow(); }, 2000);
-  $('otaFile').addEventListener('change', () => {
-    const f = $('otaFile').files[0]; OTA.file = null;
-    if (!f) { otaShow(); return; }
-    if (f.size < 100000 || f.size > 1400000){ $('otaRes').textContent = `파일 크기가 이상합니다 (${Math.round(f.size / 1024)}KB). SafeWave_Node.ino.bin 을 골라 주세요 (merged 파일 말고).`; otaShow(); return; }
-    OTA.file = f; $('otaRes').textContent = `${f.name} · ${Math.round(f.size / 1024)}KB · ${Math.ceil(f.size / OTA_CHUNK)}조각`;
-    otaShow();
-  });
-  const otaApi = (p, method, body) => fetch(fbPath(`/ota/${FB.node}${p}`), { method, headers: { 'content-type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) })
+  const otaApi = (id, p, method, body) => fetch(fbPath(`/ota/${id}${p}`), { method, headers: { 'content-type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) })
     .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status + (r.status === 401 ? ' (Firebase 규칙에 ota 추가 필요)' : '')); return r.json(); });
-  function otaProgress(pct, txt){ $('otaBarBox').hidden = false; $('otaBar').style.width = Math.max(0, Math.min(100, pct)) + '%'; $('otaSt').textContent = txt; }
-  async function otaStart(){
-    const f = OTA.file; if (!f || OTA.busy) return;
+  function otaBuild(){
+    const box = $('otaList'); if (!box || box.dataset.built) return;
+    box.dataset.built = '1';
+    OTA_DEV.forEach(dv => {
+      const row = el('div', 'otarow' + (dv.soon ? ' soon' : ''));
+      const hd = el('div', 'otahd');
+      hd.append(el('b', null, dv.name), el('span', 'otaid', dv.sub));
+      const fw = el('span', 'otafw', dv.soon ? '—' : '불러오는 중…'); hd.appendChild(fw);
+      const bar = el('div', 'otabar'); bar.hidden = true; const barIn = el('div', 'otabar-in'); bar.appendChild(barIn);
+      const ctl = el('div', 'otactl');
+      const file = document.createElement('input'); file.type = 'file'; file.accept = '.bin,application/octet-stream'; file.disabled = !!dv.soon;
+      file.setAttribute('aria-label', dv.name + ' 펌웨어 파일');
+      const go = el('button', 'primary', dv.soon ? '준비 중' : '업로드하고 업데이트'); go.type = 'button'; go.disabled = true;
+      ctl.append(file, go);
+      const msg = el('div', 'otamsg', dv.soon ? '중간 컨트롤 장치를 만들면 여기에 버전과 업데이트가 나옵니다.' : '');
+      msg.id = 'otaMsg-' + dv.id;
+      row.append(hd, bar, ctl, msg); box.appendChild(row);
+      OD[dv.id] = { dv, fw, bar, barIn, file, go, msg, node: null, upAt: 0, lastUp: null, f: null };
+      if (dv.soon) return;
+      file.addEventListener('change', () => {
+        const d = OD[dv.id], f = file.files[0]; d.f = null;
+        if (f && (f.size < 100000 || f.size > 1400000)) msg.textContent = `파일 크기가 이상합니다 (${Math.round(f.size / 1024)}KB). SafeWave_Node.ino.bin 을 골라 주세요 (merged 파일 말고).`;
+        else if (f){ d.f = f; msg.textContent = `${f.name} · ${Math.round(f.size / 1024)}KB · ${Math.ceil(f.size / OTA_CHUNK)}조각 → ${dv.name} 에 올림`; }
+        otaShow();
+      });
+      twoStep(go, `정말 ${dv.name} 업데이트`, `한 번 더 누르면 ${dv.name} 펌웨어를 바꿉니다. 1~3분 걸리고, 끝나면 그 보드가 몇 초 동안 다시 켜집니다.`, () => otaStart(dv.id), msg.id);
+    });
+  }
+  // 장치별 지금 펌웨어·켜짐 상태 (설정 화면을 볼 때만 5초마다)
+  async function otaPoll(){
+    for (const dv of OTA_DEV){
+      if (dv.soon) continue;
+      const d = OD[dv.id]; if (!d) continue;
+      try{
+        const r = await fetch(fbPath(`/nodes/${dv.id}`));
+        const n = r.ok ? await r.json() : null;
+        d.node = n;
+        if (n && n.up !== d.lastUp){ d.upAt = d.lastUp === null ? 0 : Date.now(); d.lastUp = n.up; }
+      }catch(e){}
+    }
+    otaShow();
+  }
+  function otaShow(){
+    OTA_DEV.forEach(dv => {
+      const d = OD[dv.id]; if (!d || dv.soon) return;
+      const n = d.node, on = n && Date.now() - d.upAt < 15000;
+      d.fw.textContent = !n ? '아직 연결된 적 없음' : !n.fw ? '예전 펌웨어 (무선 업데이트 안 됨 · USB로 한 번)' : `펌웨어 ${n.fw} · ${on ? '켜짐' : d.upAt ? '꺼짐/연결 안 됨' : '확인 중…'}`;
+      d.go.disabled = !!OTA.busy || !d.f || !(n && n.fw);
+    });
+  }
+  setInterval(() => { const v = $('view-settings'); if (v && !v.hidden){ otaBuild(); if (!OTA.busy) otaPoll(); } }, 5000);
+  window.swOtaInit = () => { otaBuild(); otaPoll(); };   // 설정 화면을 열 때 바로
+  async function otaStart(id){
+    const d = OD[id], dv = d.dv, f = d.f;
+    if (!f || OTA.busy) return;
+    const say = t => { d.msg.textContent = t; };
+    const prog = (pct, txt) => { d.bar.hidden = false; d.barIn.style.width = Math.max(0, Math.min(100, pct)) + '%'; say(txt); };
     const buf = new Uint8Array(await f.arrayBuffer());
-    if (buf[0] !== 0xE9){ $('otaRes').textContent = 'ESP32 펌웨어 파일이 아닙니다 (.ino.bin 을 골라 주세요)'; return; }
-    // 다른 방 펌웨어를 올리면 그 보드가 다른 방인 척하게 됨 → 파일 안의 방 표시(SWNODE=…)로 막음
+    if (buf[0] !== 0xE9){ say('ESP32 펌웨어 파일이 아닙니다 (.ino.bin 을 골라 주세요)'); return; }
+    // 다른 장치 파일을 올리면 그 보드가 다른 방인 척하게 됨 → 파일 안의 표시(SWNODE=…)로 막음
     const txt = new TextDecoder('latin1').decode(buf), mi = txt.indexOf('SWNODE=');
     const fileNode = mi >= 0 ? txt.slice(mi + 7, txt.indexOf(';', mi)) : null;
-    if (fileNode && fileNode !== FB.node){
-      const r = (NODES.find(n => n.id === fileNode) || {}).room || fileNode;
-      $('otaRes').textContent = `이 파일은 ${r}용 펌웨어입니다. 지금 고른 방은 ${CUR.room} 이에요 (위에서 방을 바꾸거나 build\\${CUR.room} 폴더 파일을 고르세요)`;
+    if (fileNode && fileNode !== id){
+      const other = OTA_DEV.find(x => x.id === fileNode);
+      say(`이 파일은 ${other ? other.name : fileNode}용이에요. ${dv.name}에는 build\\${dv.folder} 폴더 파일을 고르세요.`);
       return;
     }
-    if (!fileNode && !confirm('방 표시가 없는 예전 펌웨어 파일입니다. 그래도 올릴까요?')) return;
-    OTA.busy = true; otaShow();
-    const before = (LIVE.info || {}).fw || '';
+    if (!fileNode && !confirm('장치 표시가 없는 예전 펌웨어 파일입니다. 그래도 ' + dv.name + '에 올릴까요?')) return;
+    OTA.busy = id; otaShow();
+    const before = d.node && d.node.fw || '';
     const n = Math.ceil(buf.length / OTA_CHUNK);
     const ver = `${f.name} (${new Date(f.lastModified).toLocaleString('ko-KR', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' })})`;
     try{
-      otaProgress(0, '예전 업로드 지우는 중…');
-      await otaApi('', 'PUT', null);
-      // 조각 올리기 (2개씩 동시에 · 와이파이 실시간 연결은 잠깐 닫아서 연결 자리를 비움)
-      if (WF.es){ try{ WF.es.close(); }catch(e){} WF.es = null; }
+      prog(0, '예전 업로드 지우는 중…');
+      await otaApi(id, '', 'PUT', null);
+      if (WF.es){ try{ WF.es.close(); }catch(e){} WF.es = null; }   // 연결 자리 비우기
       let done = 0;
       const up = async i => {
         const part = buf.subarray(i * OTA_CHUNK, Math.min(buf.length, (i + 1) * OTA_CHUNK));
         let s = ''; for (let k = 0; k < part.length; k += 4096) s += String.fromCharCode.apply(null, part.subarray(k, k + 4096));
-        for (let t = 0; ; t++){ try{ await otaApi(`/c/${i}`, 'PUT', btoa(s)); break; }catch(e){ if (t >= 2) throw e; await new Promise(r => setTimeout(r, 800)); } }
-        done++; otaProgress(done / n * 50, `파일 올리는 중… ${done}/${n}`);
+        for (let t = 0; ; t++){ try{ await otaApi(id, `/c/${i}`, 'PUT', btoa(s)); break; }catch(e){ if (t >= 2) throw e; await new Promise(r => setTimeout(r, 800)); } }
+        done++; prog(done / n * 50, `파일 올리는 중… ${done}/${n}`);
       };
       for (let i = 0; i < n; i += 2) await Promise.all([i, i + 1].filter(k => k < n).map(up));
-      await otaApi('/meta', 'PUT', { size: buf.length, n, ver, by: SWAuth.name() || null, at: { '.sv': 'timestamp' } });
-      await otaApi('/status', 'PUT', { st: 'wait', pct: 0, msg: '보드가 받기를 기다리는 중', at: { '.sv': 'timestamp' } });
-      const r = await fetch(fbPath(`/cmd/${FB.node}`), { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify('OTA') });
+      await otaApi(id, '/meta', 'PUT', { size: buf.length, n, ver, by: SWAuth.name() || null, at: { '.sv': 'timestamp' } });
+      await otaApi(id, '/status', 'PUT', { st: 'wait', pct: 0, msg: '보드가 받기를 기다리는 중', at: { '.sv': 'timestamp' } });
+      const r = await fetch(fbPath(`/cmd/${id}`), { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify('OTA') });
       if (!r.ok) throw new Error('보드에 시작 명령 보내기 실패 · HTTP ' + r.status);
-      logShared(`펌웨어 무선 업데이트 시작: ${ver}`, 'wn');
-      otaProgress(50, '보드가 받는 중…');
+      logShared(`${dv.name} 펌웨어 무선 업데이트 시작: ${ver}`, 'wn');
+      prog(50, `${dv.name}가 받는 중…`);
     }catch(e){
-      OTA.busy = false; otaProgress(0, '실패'); $('otaRes').textContent = '업로드 실패: ' + e.message; otaShow();
-      otaApi('/c', 'PUT', null).catch(() => {});
+      OTA.busy = null; prog(0, '업로드 실패: ' + e.message); otaShow();
+      otaApi(id, '/c', 'PUT', null).catch(() => {});
       return;
     }
     // 보드 진행률 지켜보기 (최대 6분)
     const t0 = Date.now();
-    clearInterval(OTA.timer);
-    OTA.timer = setInterval(async () => {
-      let s = null; try{ s = await otaApi('/status', 'GET'); }catch(e){}
-      const fwNow = (LIVE.info || {}).fw || '';
-      const finish = (ok, msg) => {
-        clearInterval(OTA.timer); OTA.busy = false;
-        otaProgress(ok ? 100 : (s && s.pct ? 50 + s.pct / 2 : 0), msg); $('otaRes').textContent = msg; otaShow();
-        otaApi('/c', 'PUT', null).catch(() => {});   // 펌웨어 조각 지우기 (비밀번호가 들어 있어서)
-        logShared(`펌웨어 무선 업데이트 ${ok ? '완료' : '실패'}: ${msg}`, ok ? 'ok' : 'wn');
+    const timer = setInterval(async () => {
+      let s = null; try{ s = await otaApi(id, '/status', 'GET'); }catch(e){}
+      await otaPoll();
+      const finish = (ok, m) => {
+        clearInterval(timer); OTA.busy = null;
+        prog(ok ? 100 : (s && s.pct ? 50 + s.pct / 2 : 0), m); otaShow();
+        otaApi(id, '/c', 'PUT', null).catch(() => {});   // 펌웨어 조각 지우기 (비밀번호가 들어 있어서)
+        logShared(`${dv.name} 펌웨어 무선 업데이트 ${ok ? '완료' : '실패'}: ${m}`, ok ? 'ok' : 'wn');
       };
-      if (s && s.st === 'down') otaProgress(50 + (s.pct || 0) / 2, `보드가 받는 중… ${s.pct || 0}%`);
+      if (s && s.st === 'down') prog(50 + (s.pct || 0) / 2, `${dv.name}가 받는 중… ${s.pct || 0}%`);
       if (s && s.st === 'fail') return finish(false, '보드: ' + (s.msg || '실패') + ' (지금 펌웨어로 계속 동작)');
       if (s && s.st === 'done'){
-        otaProgress(100, '설치 완료 · 보드 다시 켜는 중…');
-        // 다시 켜진 것 확인: 보드가 보내는 켜진 시간(up)이 90초 미만으로 새로 시작됨
-        const li = LIVE.info;
-        if (li && +li.up < 90 && Date.now() - lastMsgAt < 5000) return finish(true, `완료 · 지금 펌웨어 ${fwNow || '?'}${fwNow && fwNow === before ? ' (버전 이름이 그대로임 · FW_VERSION 올리는 걸 추천)' : ''}`);
+        prog(100, '설치 완료 · 보드 다시 켜는 중…');
+        const nn = d.node;   // 다시 켜진 것 확인: 켜진 시간(up)이 90초 미만으로 새로 시작
+        if (nn && +nn.up < 90 && Date.now() - d.upAt < 8000) return finish(true, `완료 · 지금 펌웨어 ${nn.fw || '?'}${nn.fw && nn.fw === before ? ' (버전 이름이 그대로임)' : ''}`);
       }
       if (Date.now() - t0 > 360000) finish(false, '시간 초과 (6분) · 보드 상태를 확인해 주세요');
-    }, 1500);
+    }, 2000);
   }
-  twoStep($('otaGo'), '정말 업데이트', '한 번 더 누르면 보드 펌웨어를 바꿉니다. 1~3분 걸리고, 끝나면 보드가 몇 초 동안 다시 켜집니다.', otaStart, 'otaRes');
   if (REAL && !BOTH) SWAuth.ready.then(logsConnect);
   SWAuth.onRefresh(() => { if (LGS.es){ try{ LGS.es.close(); }catch(e){} LGS.es = null; } logsConnect(); });
   if (REAL && !BOTH) SWAuth.ready.then(shareConnect);
