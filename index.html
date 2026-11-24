@@ -389,6 +389,10 @@ html.embed body{background:transparent}
 @media (prefers-reduced-motion:reduce){.wflist .tag.going{animation:none}}
 .wflist .ghost{min-height:32px;padding:4px 10px;font-size:12px}
 .wfmu{color:var(--mu);font-size:12.5px;margin-right:auto;align-self:center}
+.wfdevrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.wfdevs{display:inline-flex;gap:6px}
+.wfdev{border:1px solid var(--bd2);background:transparent;color:var(--tx2);font:inherit;font-size:13.5px;font-weight:800;padding:6px 14px;border-radius:10px;min-height:38px;cursor:pointer}
+.wfdev.on{background:rgba(56,189,248,.16);border-color:rgba(56,189,248,.6);color:#7DD3FC}
 .wfhd{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:13px;color:var(--tx2)}
 .wfhd b{margin-right:auto}
 .wfhd .ghost{min-height:30px;padding:3px 10px;font-size:12px}
@@ -983,7 +987,7 @@ html:not(.role-admin) #view-profile :is(input,select,textarea){border-color:tran
     </dl>
   </section>
   <section class="glass panel" style="margin-top:18px" aria-labelledby="hWifi">
-    <div class="ph"><div class="tt"><div class="ico" style="background:rgba(56,189,248,.14);color:#38BDF8;border:1px solid rgba(56,189,248,.4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 8.8a15 15 0 0 1 20 0M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1"/></svg></div><div><h3 id="hWifi">보드 와이파이</h3><p>저장된 와이파이 중 골라서 연결하고, 새 와이파이를 넣어 둡니다</p></div></div><button type="button" class="ghost" id="wfReload">주변 다시 찾기</button></div>
+    <div class="ph"><div class="tt"><div class="ico" style="background:rgba(56,189,248,.14);color:#38BDF8;border:1px solid rgba(56,189,248,.4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 8.8a15 15 0 0 1 20 0M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1"/></svg></div><div><h3 id="hWifi">보드 와이파이</h3><p>저장된 와이파이 중 골라서 연결하고, 새 와이파이를 넣어 둡니다</p></div></div><div class="wfdevrow"><span class="wfdevs" id="wfDevs" role="group" aria-label="와이파이를 볼 장치"></span><button type="button" class="ghost" id="wfReload">주변 다시 찾기</button></div></div>
     <div class="wfhd"><b>저장된 와이파이</b><span class="wfmu">끊기면 신호 센 곳에 자동 연결</span></div>
     <ul class="wflist" id="wfList"><li class="wfmu">불러오는 중…</li></ul>
     <div class="wfhd" style="margin-top:14px"><b>주변 와이파이</b><span class="wfmu" id="wfNearAgo"></span></div>
@@ -998,7 +1002,7 @@ html:not(.role-admin) #view-profile :is(input,select,textarea){border-color:tran
   <section class="glass panel" style="margin-top:18px" aria-labelledby="hOta">
     <div class="ph"><div class="tt"><div class="ico" style="background:rgba(167,139,250,.14);color:#A78BFA;border:1px solid rgba(167,139,250,.4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg></div><div><h3 id="hOta">펌웨어 무선 업데이트</h3><p>USB 없이 인터넷으로 보드 펌웨어를 바꿉니다</p></div></div></div>
     <div class="otalist" id="otaList"></div>
-    <span class="help" style="display:block;margin-top:10px">장치마다 파일이 달라요. 거실 = <code>SafeWave_Node\build\거실\SafeWave_Node.ino.bin</code>, 큰방 = <code>…\build\큰방\…</code>, 중간 컨트롤 = <code>SafeWave_Hub\build\SafeWave_Hub.ino.bin</code>. 다른 장치 파일을 고르면 막아 줍니다. 받는 동안에도 감지는 계속되고, 실패하면 지금 펌웨어 그대로 동작합니다. 파일에는 와이파이 비밀번호가 들어 있어서 관리자만 볼 수 있게 올리고, 끝나면 지웁니다.</span>
+    <span class="help" style="display:block;margin-top:10px">장치마다 파일이 달라요. 거실 = <code>SafeWave_Node\build\거실\SafeWave_Node.ino.bin</code>, 큰방 = <code>…\build\큰방\…</code>, 중앙 컨트롤 = <code>SafeWave_Hub\build\SafeWave_Hub.ino.bin</code>. 다른 장치 파일을 고르면 막아 줍니다. 받는 동안에도 감지는 계속되고, 실패하면 지금 펌웨어 그대로 동작합니다. 파일에는 와이파이 비밀번호가 들어 있어서 관리자만 볼 수 있게 올리고, 끝나면 지웁니다.</span>
   </section>
   <div class="actions"><span class="saved" id="stSaved">✓ 저장되었습니다</span><button type="button" class="ghost" id="stReset">기본값</button><button type="button" class="primary" id="stSave">저장</button></div>
 </div>
@@ -2757,7 +2761,31 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
   }
   const wifiWord = r => !r ? '안 보임' : r > -55 ? '강함' : r > -67 ? '보통' : r > -78 ? '약함' : '매우 약함';
   window.swWifiIcon = wifiIcon; window.swWifiWord = wifiWord;
-  const WF = { info: null, wait: 0, timer: 0 };
+  // 어느 장치의 와이파이를 볼지 (거실·큰방 레이더, 중앙 컨트롤). 처음엔 지금 보는 방
+  const WF_DEVS = [
+    { id: 'daegu-102-1', label: '거실' },
+    { id: 'daegu-102-2', label: '큰방' },
+    { id: 'hub-1', label: '중앙' }
+  ];
+  const WF = { info: null, wait: 0, timer: 0, dev: CUR.id };
+  function wfDevBtns(){
+    const box = $('wfDevs'); if (!box) return;
+    box.textContent = '';
+    WF_DEVS.forEach(d => {
+      const b = el('button', 'wfdev' + (WF.dev === d.id ? ' on' : ''), d.label); b.type = 'button';
+      b.setAttribute('aria-pressed', String(WF.dev === d.id));
+      b.title = d.id === 'hub-1' ? '중앙 컨트롤 (주방 스피커)의 와이파이' : d.label + ' 레이더의 와이파이';
+      b.onclick = () => {
+        if (WF.dev === d.id) return;
+        if (WF.pend && WF.pend.op === 'use') return;   // 와이파이를 바꾸는 중에는 기다림
+        WF.pend = null; WF.wait = 0;                    // 다른 대기(주변 찾기 등)는 취소하고 바로 바꿈
+        WF.dev = d.id; WF.info = null; WF.scanTime = 0; wfDevBtns(); wfRender();
+        $('wfRes').textContent = `${d.label} ${d.id === 'hub-1' ? '컨트롤' : '레이더'} 와이파이를 불러오는 중…`;
+        wfLoad().then(i => { if (i && i.list) wfSend({ op: 'scan' }, true); });
+      };
+      box.appendChild(b);
+    });
+  }
   // 확인 창(confirm) 대신 "한 번 더 누르기" (앱 안 미리보기·웹뷰에서는 confirm 이 막혀서)
   function twoStep(btn, armLabel, hint, act, resId){
     const orig = btn.textContent; let t = 0;
@@ -2840,6 +2868,7 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
   // 연결된 와이파이 신호: 보드가 0.3~2초마다 보내는 상태값(rssi)으로 바로 바꿈
   function wfLive(){
     const li = LIVE.info, i = WF.info;
+    if (WF.dev !== FB.node) return;   // 실시간 신호는 지금 보는 방 보드일 때만
     if (!li || !li.ssid || !i || li.ssid !== i.cur || !+li.rssi) return;
     const r = +li.rssi;
     document.querySelectorAll('#wfList [data-live]').forEach(e => {
@@ -2885,7 +2914,7 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
   async function wfLoad(){
     let info;
     try{
-      const r = await fetch(fbPath(`/wifiinfo/${FB.node}`));
+      const r = await fetch(fbPath(`/wifiinfo/${WF.dev}`));
       info = r.ok ? await r.json() : false;
     }catch(e){ info = false; }
     wfApply(info);
@@ -2896,10 +2925,10 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
     if (btn){ btn.disabled = true; btn.textContent = { del:'삭제 중…', use:'바꾸는 중…' }[cmd.op] || '보내는 중…'; const li = btn.closest('li'); if (li) li.classList.add('busy'); }
     try{
       // ACK·TEST 와 같은 cmd 아래에 둬서 보드가 1초마다 한 번에 확인
-      const r = await fetch(fbPath(`/cmd/${FB.node}_wifi`), { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(cmd) });
+      const r = await fetch(fbPath(`/cmd/${WF.dev}_wifi`), { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(cmd) });
       if (!r.ok){ $('wfRes').textContent = `전송 실패 · HTTP ${r.status}`; wfRender(); return false; }
     }catch(e){ $('wfRes').textContent = '전송 실패: ' + e.message; wfRender(); return false; }
-    if (!quiet) logShared(`보드 와이파이 ${{ add:'추가', del:'삭제', use:'연결 변경', scan:'주변 찾기', restart:'보드 재시작' }[cmd.op] || cmd.op}${cmd.ssid ? ': ' + cmd.ssid : ''}`, 'sys');
+    if (!quiet) logShared(`${(WF_DEVS.find(d => d.id === WF.dev) || {}).label || ''} 보드 와이파이 ${{ add:'추가', del:'삭제', use:'연결 변경', scan:'주변 찾기', restart:'보드 재시작' }[cmd.op] || cmd.op}${cmd.ssid ? ': ' + cmd.ssid : ''}`, 'sys');
     WF.wait = Date.now(); WF.op = cmd.op;
     WF.pend = { op: cmd.op, ssid: cmd.ssid, before, start: Date.now(), limit: cmd.op === 'use' ? 40000 : 15000 };   // 와이파이를 바꾸면 다시 붙을 때까지 시간이 걸림
     if (!btn || cmd.op === 'use') wfRender(); else { wfAgo(); $('wfRes').textContent = cmd.op === 'use' ? '와이파이 바꾸는 중… (최대 40초, 그동안 원격 화면 끊김)' : '보드에 보내는 중…'; }
@@ -2922,7 +2951,7 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
     if (await wfSend({ op:'add', ssid, pass })){ $('wfPass').value = ''; $('wfPass').type = 'password'; $('wfEye').setAttribute('aria-pressed', 'false'); }
   });
   twoStep($('wfRestart'), '정말 다시 시작', '한 번 더 누르면 보드를 다시 시작합니다. 몇 초 동안 감지가 멈춥니다.', () => wfSend({ op:'restart' }));
-  window.swWifiLoad = async () => { wfStream(); await wfLoad(); if (WF.info && WF.info.list) wfSend({ op:'scan' }, true); };   // 화면 열 때 주변도 새로 찾기
+  window.swWifiLoad = async () => { wfDevBtns(); wfStream(); await wfLoad(); if (WF.info && WF.info.list) wfSend({ op:'scan' }, true); };   // 화면 열 때 주변도 새로 찾기
   // 원격 값이 끊기면(보드 꺼짐·Wi-Fi 끊김) 표시를 미연결로 되돌림
   setInterval(() => {
     if (LIVE.src === 'remote' && Date.now() - lastUpAt > 10000){
@@ -3307,13 +3336,13 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
   if (REAL && !BOTH && !EMBED) SWAuth.ready.then(watchOthers);   // 함께 보기·방 화면에선 필요 없음 (연결 수 아끼기)
   SWAuth.onRefresh(() => { Object.values(OTHER).forEach(o => { try{ o.es && o.es.close(); }catch(e){} o.es = null; }); watchOthers(); });
 
-  // ---- 펌웨어 무선 업데이트 (관리자): 장치마다 한 줄 (거실 레이더 · 큰방 레이더 · 중간 컨트롤) ----
+  // ---- 펌웨어 무선 업데이트 (관리자): 장치마다 한 줄 (거실 레이더 · 큰방 레이더 · 중앙 컨트롤) ----
   // .bin 을 12KB 씩 base64 로 ota/<장치>/c/<번호> 에 올리고 → meta → cmd/<장치> "OTA"
   // 보드가 조각을 받아 새 펌웨어로 바꾸고 ota/<장치>/status 에 진행률을 올림. 끝나면 조각은 지움 (와이파이 비밀번호가 들어 있어서)
   const OTA_DEV = [
     { id: 'daegu-102-1', name: '거실 레이더', sub: '대구 102동 거실 #1', folder: '거실' },
     { id: 'daegu-102-2', name: '큰방 레이더', sub: '대구 102동 큰방 #2', folder: '큰방' },
-    { id: 'hub-1', name: '중간 컨트롤', sub: '주방 식탁 경고 스피커', folder: 'hub', path: 'SafeWave_Hub\\build\\SafeWave_Hub.ino.bin', hub: true }
+    { id: 'hub-1', name: '중앙 컨트롤', sub: '주방 식탁 경고 스피커', folder: 'hub', path: 'SafeWave_Hub\\build\\SafeWave_Hub.ino.bin', hub: true }
   ];
   const OTA = { busy: null };   // 지금 업데이트 중인 장치 id (한 번에 하나만)
   const OD = {};                // 장치별 화면·상태
@@ -3334,10 +3363,10 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
       file.setAttribute('aria-label', dv.name + ' 펌웨어 파일');
       const go = el('button', 'primary', dv.soon ? '준비 중' : '업로드하고 업데이트'); go.type = 'button'; go.disabled = true;
       ctl.append(file, go);
-      const msg = el('div', 'otamsg', dv.soon ? '중간 컨트롤 장치를 만들면 여기에 버전과 업데이트가 나옵니다.' : '');
+      const msg = el('div', 'otamsg', dv.soon ? '중앙 컨트롤 장치를 만들면 여기에 버전과 업데이트가 나옵니다.' : '');
       msg.id = 'otaMsg-' + dv.id;
       row.append(hd, bar, ctl, msg); box.appendChild(row);
-      if (dv.hub){   // 중간 컨트롤 스피커 시험 버튼
+      if (dv.hub){   // 중앙 컨트롤 스피커 시험 버튼
         const t = el('div', 'otactl');
         [['안내 음성 시험', 'TEST'], ['경고음 시험', 'SIREN'], ['소리 멈춤', 'STOP']].forEach(([tx, c]) => {
           const b = el('button', 'ghost', tx); b.type = 'button';
