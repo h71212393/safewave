@@ -1697,9 +1697,9 @@ window.SWAuth = (function(){
       addr:$('fAddr').value.trim(), cond:$('fCond').value.trim(), meds:$('fMeds').value.trim(), mob:$('fMob').value.trim(), note:$('fNote').value.trim(),
       contacts: readContactEditor().filter(c => c.name || c.phone) };
     store.set('sw-profile', P); renderProfile(); render(); flash('pfSaved'); logShared('대상자 정보 저장', 'sys');
-    shareSave({ profile: P }, '대상자 정보');
+    profileSave(P, '대상자 정보');
   };
-  $('pfReset').onclick = () => { P = JSON.parse(JSON.stringify(DEF_PROFILE)); store.set('sw-profile', P); fillProfileForm(); renderProfile(); render(); flash('pfSaved'); shareSave({ profile: P }, '대상자 정보'); };
+  $('pfReset').onclick = () => { P = JSON.parse(JSON.stringify(DEF_PROFILE)); store.set('sw-profile', P); fillProfileForm(); renderProfile(); render(); flash('pfSaved'); profileSave(P, '대상자 정보'); };
 
   /* ---------- 장치 설정 ---------- */
   function syncOutputs(){
@@ -3127,6 +3127,26 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
   // ---- 누가 바꾸든 모든 화면에 실시간으로 반영 (예전엔 브라우저마다 따로 저장) ----
   const SH_KEYS = ['posOff', 'flipX', 'flipY', 'swapXY'];
   var SH = { es: null, first: true, test: null };   // var: 위쪽 liveUi 가 먼저 불려도 안전하게
+  // 대상자 정보·비상연락처는 방마다가 아니라 한 곳(센서1 칸 shared/<센서1>/profile)에 저장 → 거실·큰방 화면·보호자 앱·긴급 문자가 모두 같은 정보
+  const PROFILE_NODE = NODES[0].id;
+  function applyProfile(pr){
+    if (!pr || typeof pr !== 'object') return;
+    const np = Object.assign({}, DEF_PROFILE, pr);
+    np.contacts = Array.isArray(np.contacts) ? np.contacts : np.contacts ? Object.values(np.contacts) : [];
+    if (JSON.stringify(np) !== JSON.stringify(P)){
+      P = np; store.set('sw-profile', P); renderProfile(); render();
+      if (!$('view-profile') || $('view-profile').hidden) fillProfileForm();   // 편집 중인 화면은 건드리지 않음
+    }
+  }
+  async function profileSave(pr, what){
+    if (!SWAuth.token()) return;
+    SH.ownAt = Date.now();
+    try{
+      const body = { profile: pr, by: SWAuth.name() || null, at: { '.sv': 'timestamp' } };
+      const r = await fetch(fbPath(`/shared/${PROFILE_NODE}`), { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+      if (!r.ok) log(`[공유] ${what} 저장 실패 · HTTP ${r.status} · 이 화면에만 적용됨`, 'wn');
+    }catch(e){ log(`[공유] ${what} 저장 실패: ${e.message} · 이 화면에만 적용됨`, 'wn'); }
+  }
   function shareApply(d, fromStream){
     d = d || {};
     SH.doc = d;
@@ -3139,15 +3159,8 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
     renderZones(); syncAxisBtns();
     // 구역·가운데 맞추기·반전이 바뀌어서 보드용 구역(bz)과 다르면 관리자 화면이 다시 계산해서 보드로 보냄
     if (SWAuth.isAdmin() && d.bz !== boardZones()){ clearTimeout(SH.zTimer); SH.zTimer = setTimeout(() => syncBoardZones(), 800); }
-    // 대상자 인적사항
-    if (d.profile && typeof d.profile === 'object'){
-      const np = Object.assign({}, DEF_PROFILE, d.profile);
-      np.contacts = Array.isArray(np.contacts) ? np.contacts : np.contacts ? Object.values(np.contacts) : [];
-      if (JSON.stringify(np) !== JSON.stringify(P)){
-        P = np; store.set('sw-profile', P); renderProfile(); render();
-        if (!$('view-profile') || $('view-profile').hidden) fillProfileForm();   // 편집 중인 화면은 건드리지 않음
-      }
-    }
+    // 대상자 인적사항: 집에 한 명이라 센서1 칸 한 곳에만 저장 (다른 방 화면은 shareConnect 가 따로 읽어 옴)
+    if (FB.node === PROFILE_NODE) applyProfile(d.profile);
     // 장치 설정 (낙상 판정 높이·유예·민감도·알림 채널). 설치 높이는 보드 값이 기준이라 제외
     if (d.settings && typeof d.settings === 'object'){
       const ns = Object.assign({}, C, d.settings, { inst: C.inst });
@@ -3236,16 +3249,21 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
             if (SH.first && !doc){   // 처음 쓰는 경우: 공유 값이 아직 없으면 관리자의 이 브라우저 설정을 올려서 시작
               SH.first = false;
               if (SWAuth.isAdmin()){
-                const init = { zones: customZones.length ? customZones : null, profile: P };
+                const init = { zones: customZones.length ? customZones : null };
                 SH_KEYS.forEach(k => init[k] = LS_get(k));
                 shareSave(init, '처음 공유');
               }
             } else {
-              if (SH.first && doc && !doc.profile && SWAuth.isAdmin()) shareSave({ profile: P }, '대상자 정보 처음 공유');
+              if (SH.first && FB.node === PROFILE_NODE && doc && !doc.profile && SWAuth.isAdmin()) profileSave(P, '대상자 정보 처음 공유');
               shareApply(doc, true);
               SH.first = false;
             }
           }
+        }
+        // 센서1 이 아닌 방 화면: 대상자 정보는 센서1 칸에서 따로 읽어 옴
+        if (FB.node !== PROFILE_NODE){
+          const pr = await fetch(fbPath(`/shared/${PROFILE_NODE}/profile`));
+          if (pr.ok){ const pt = await pr.text(); if (pt !== SH.lastProfile){ SH.lastProfile = pt; applyProfile(JSON.parse(pt)); } }
         }
       }catch(e){}
       if (!stop) t = setTimeout(tick, 3000);
