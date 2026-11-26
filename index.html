@@ -308,7 +308,7 @@ html:not(.real) .ckey .zr{display:none}
 .f textarea{min-height:76px;resize:vertical}
 .f input:focus,.f select:focus,.f textarea:focus{outline:none;border-color:#2DD4BF;box-shadow:0 0 0 3px rgba(45,212,191,.2)}
 .f .help{font-size:11.5px;color:var(--mu)}
-.cedit{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.2fr) 40px;gap:8px;align-items:end;padding:12px;border-radius:12px;background:rgba(2,6,23,.5);border:1px solid var(--bd);margin-bottom:10px}
+.cedit{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.2fr) auto 40px;gap:8px;align-items:end;padding:12px;border-radius:12px;background:rgba(2,6,23,.5);border:1px solid var(--bd);margin-bottom:10px}
 @media (max-width:560px){.cedit{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.cedit .f:nth-child(3){grid-column:1/-1}}
 .cedit .del{width:40px;height:44px;border-radius:10px;border:1px solid rgba(251,113,133,.4);background:transparent;color:#FDA4AF;font-size:18px}
 .actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:18px}
@@ -570,6 +570,33 @@ html:not(.role-admin) #view-profile :is(input,select,textarea){border-color:tran
 .auth .wait b{color:#fff}
 .auth .wait .big{font-size:34px;line-height:1;margin-bottom:10px}
 .auth .wait .row{display:flex;gap:8px;justify-content:center;margin-top:18px}
+/* 방별 센서 상태 (초록 안전 · 노랑 주의 · 빨강 경고/센서 없음) */
+.rst{display:flex;gap:8px;flex-wrap:wrap}
+.rst .rs{display:flex;align-items:center;gap:8px;padding:7px 12px;border-radius:10px;border:1px solid;font-weight:800;font-size:13.5px;cursor:pointer;background:none;font-family:inherit;min-height:36px}
+.rst .rs i{width:9px;height:9px;border-radius:50%;background:currentColor;box-shadow:0 0 10px currentColor;flex:none}
+.rst .rs b{color:var(--tx);font-weight:800}
+.rst .rs.ok{color:#6EE7B7;background:rgba(16,185,129,.14);border-color:rgba(52,211,153,.5)}
+.rst .rs.wn{color:#FCD34D;background:rgba(245,158,11,.16);border-color:rgba(251,191,36,.6)}
+.rst .rs.cr{color:#FDA4AF;background:rgba(244,63,94,.18);border-color:#FB7185}
+.rst .rs.cr.hot{color:#fff;background:#E11D48;box-shadow:0 0 18px rgba(244,63,94,.55)}
+.rst .rs.cr.hot b{color:#fff}
+@media (prefers-reduced-motion:no-preference){.rst .rs.wn i{animation:fade 1s ease-in-out infinite}.rst .rs.cr.hot{animation:alarm 1s ease-in-out infinite}}
+/* 메뉴 줄 오른쪽 끝: 보호자 앱 받기 */
+.nav .navapk{margin-left:auto;display:inline-flex;align-items:center;gap:7px;padding:7px 14px;border-radius:10px;text-decoration:none;white-space:nowrap;
+  font-weight:800;font-size:13.5px;color:#A7F3D0;border:1px solid rgba(52,211,153,.45);background:rgba(16,185,129,.10);align-self:center}
+.nav .navapk:hover{background:rgba(16,185,129,.2)}
+.nav .navapk svg{width:17px;height:17px}
+.nav .navapk small{font-size:10.5px;font-weight:700;color:var(--tx2)}
+.pill[hidden]{display:none}
+.wflist .tag.off{color:#FDA4AF;border-color:rgba(251,113,133,.55);background:rgba(244,63,94,.12)}
+.wfoff{color:#FDA4AF!important}
+/* 장치 설정: 왼쪽·오른쪽 줄을 따로 쌓아서 빈칸 없이 */
+.fgrid .fcol{display:flex;flex-direction:column;gap:18px;min-width:0}
+@media (max-width:720px){.rst .rs{padding:6px 10px;font-size:12.5px}}
+.smsck{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;color:var(--tx2);white-space:nowrap;align-self:end;min-height:40px;cursor:pointer}
+.smsck input{width:16px;height:16px;accent-color:#14B8A6}
+.nmrow{display:flex;gap:8px;align-items:center}
+.nmrow input{flex:1;min-width:0}
 .chip.user{gap:10px;padding:5px 6px 5px 12px}
 .chip.user .rb{font-size:11px;font-weight:800;padding:2px 8px;border-radius:99px;background:rgba(148,163,184,.18);color:var(--tx2)}
 .chip.user .rb.adm{background:rgba(45,212,191,.2);color:#5EEAD4}
@@ -640,17 +667,23 @@ html:not(.role-admin) #view-profile :is(input,select,textarea){border-color:tran
     </div>
     <div class="chip rooms" role="group" aria-label="방 고르기"><span class="live" aria-hidden="true"></span><span>방</span><span id="roomBtns"></span></div>
     <div class="chip clock" id="clock">----</div>
-    <div class="pill normal" id="pill" role="status" aria-live="polite"><i></i><span id="pillTx">정상 NORMAL</span></div>
+    <div class="pill normal" id="pill" hidden><i></i><span id="pillTx">정상 NORMAL</span></div>
+    <div class="rst" id="roomSt" role="status" aria-live="polite" aria-label="방별 센서 상태"></div>
     <div class="chip user"><strong id="uName">-</strong><span class="rb" id="uRole"></span><button type="button" id="uOut">로그아웃</button></div>
   </div>
   <nav class="nav" aria-label="주요 메뉴">
-    <button type="button" data-view="daegu-102-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M12 12l6-6"/></svg>거실 관제</button>
-    <button type="button" data-view="daegu-102-2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M12 12l6-6"/></svg>큰방 관제</button>
+    <button type="button" data-view="daegu-102-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M12 12l6-6"/></svg><span data-nm="daegu-102-1">센서1</span> 관제</button>
+    <button type="button" data-view="daegu-102-2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M12 12l6-6"/></svg><span data-nm="daegu-102-2">센서2</span> 관제</button>
     <button type="button" data-view="both"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="8" height="16" rx="2"/><rect x="13" y="4" width="8" height="16" rx="2"/></svg>함께 보기</button>
     <button type="button" data-go="log"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></svg>이벤트 로그 <span class="cnt" id="navCnt">0</span></button>
     <button type="button" data-go="profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>대상자 정보</button>
     <button type="button" data-go="settings" class="adm-only"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>장치 설정</button>
     <button type="button" data-go="users" class="adm-only"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14.2a6.5 6.5 0 0 1 3.5 5.8"/></svg>회원 관리 <span class="cnt hot" id="uPend" hidden>0</span></button>
+    <button type="button" data-go="admin" class="adm-only"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>관리자</button>
+    <a class="navapk" href="https://github.com/h71212393/safewave-guardian/releases/download/apk-latest/SafeWave-Guardian.apk" title="안드로이드 보호자 앱 받기 (APK)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M12 7.5v7M9 11.5l3 3 3-3"/><path d="M10.5 18.5h3"/></svg>
+      보호자 앱 받기 <small>APK</small>
+    </a>
   </nav>
 </header>
 
@@ -659,7 +692,7 @@ html:not(.role-admin) #view-profile :is(input,select,textarea){border-color:tran
 <!-- ================= 함께 보기 (거실 + 큰방 나란히) ================= -->
 <div class="view" id="view-both" hidden>
   <div class="bothbar glass">
-    <span>거실과 큰방을 나란히 봅니다. 각 화면은 그 방만의 지도·높이·경고를 보여 줍니다. 로그·설정은 방 하나를 골라서 보세요.</span>
+    <span><span data-nm="daegu-102-1">센서1</span>과 <span data-nm="daegu-102-2">센서2</span>를 나란히 봅니다. 각 화면은 그 방만의 지도·높이·경고를 보여 줍니다. 로그·설정은 방 하나를 골라서 보세요.</span>
     <button type="button" class="lvb" id="bothSnd">🔔 경보음 켜기</button>
   </div>
   <div class="bothgrid" id="bothGrid"></div>
@@ -721,7 +754,7 @@ html:not(.role-admin) #view-profile :is(input,select,textarea){border-color:tran
         <div class="ph">
           <div class="tt">
             <div class="ico" style="background:rgba(45,212,191,.16);color:#2DD4BF;border:1px solid rgba(45,212,191,.4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2zM9 4v14M15 6v14"/></svg></div>
-            <div><h3 id="hMap">실시간 <span class="roomName">거실</span> 레이더 감지</h3><p id="mapSub">안전지대(침대/소파) 표시 · 대상자 재실 및 실측 높이(Z)</p></div>
+            <div><h3 id="hMap">실시간 <span class="roomName">거실</span> 레이더 감지</h3><p id="mapSub">예외 구역 표시 · 대상자 재실 및 실측 높이(Z)</p></div>
           </div>
           <div class="tools">
             <div class="seg" role="group" aria-label="보기 모드">
@@ -815,13 +848,12 @@ html:not(.role-admin) #view-profile :is(input,select,textarea){border-color:tran
             <div class="ico" style="background:rgba(45,212,191,.16);color:#2DD4BF;border:1px solid rgba(45,212,191,.4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></div>
             <div><h3 id="hSubj">대상자 인적사항</h3><p>모니터링 대상 어르신</p></div>
           </div>
-          <span class="sample">예시 데이터</span>
         </div>
         <div class="subj-top">
-          <div class="avatar" id="avatar">김</div>
+          <div class="avatar" id="avatar">?</div>
           <div>
-            <div class="subj-name" id="pName">김영순</div>
-            <div class="subj-meta" id="pMeta">78세 · 여 · 혈액형 A+</div>
+            <div class="subj-name" id="pName"></div>
+            <div class="subj-meta" id="pMeta"></div>
             <span class="presence normal" id="presence">● 재실 · 정상</span>
           </div>
         </div>
@@ -949,6 +981,22 @@ html:not(.role-admin) #view-profile :is(input,select,textarea){border-color:tran
     <div><h2>장치 설정</h2><p>레이더 감지 파라미터와 알림 연동을 조정합니다. 저장하면 관제 화면에 바로 반영됩니다.</p></div>
   </div>
   <div class="fgrid">
+   <div class="fcol">
+    <section class="glass panel" aria-labelledby="hNames">
+      <div class="ph"><div class="tt"><div class="ico" style="background:rgba(56,189,248,.16);color:#38BDF8;border:1px solid rgba(56,189,248,.4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg></div><div><h3 id="hNames">센서 이름</h3><p>처음엔 센서1·센서2 · 설치한 방 이름으로 바꿔 주세요</p></div></div></div>
+      <div class="fields" id="nameFields"></div>
+    </section>
+    <section class="glass panel" aria-labelledby="hNoti">
+      <div class="ph"><div class="tt"><div class="ico" style="background:rgba(244,63,94,.16);color:#FB7185;border:1px solid rgba(251,113,133,.45)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg></div><div><h3 id="hNoti">알림 및 음성</h3><p>긴급 확정 시 연동 채널</p></div></div></div>
+      <div class="trow"><div><b id="lVoice">허브 음성 안내</b><span>유예 진입 시 스피커로 안내 멘트 송출</span></div><button type="button" class="sw" role="switch" data-k="voice" aria-labelledby="lVoice"></button></div>
+      <div class="trow"><div><b id="lTg">텔레그램 봇 푸시</b><span>앱이 꺼져 있어도 보호자에게 도달</span></div><button type="button" class="sw" role="switch" data-k="tg" aria-labelledby="lTg"></button></div>
+      <div class="trow"><div><b id="lPush">보호자 앱 푸시</b><span>대시보드 앱 진동 및 경고음</span></div><button type="button" class="sw" role="switch" data-k="push" aria-labelledby="lPush"></button></div>
+      <div class="trow"><div><b id="lSms">긴급 문자 자동 발송 (SMS)</b><span>긴급 확정·해제 때 비상연락처에 문자 · 저장해야 적용</span></div><button type="button" class="sw" role="switch" data-k="sms" aria-labelledby="lSms"></button></div>
+      <p class="help" style="margin:6px 0 2px">문자는 보호자 앱 <b>설정 → "이 폰에서 문자 보내기"</b>를 켠 안드로이드 폰이 자기 번호로 보내요 (팀에서 한 대만). 받는 사람은 대상자 정보의 비상연락처 중 <b>자동 문자</b>를 체크한 번호예요. 시험 문자도 앱 설정에서 보내요.</p>
+      <div class="trow"><div><b id="l119">119 자동 연동</b><span>끄면 보호자 확인 후 수동 신고</span></div><button type="button" class="sw" role="switch" data-k="auto119" aria-labelledby="l119"></button></div>
+    </section>
+   </div>
+   <div class="fcol">
     <section class="glass panel" aria-labelledby="hDet">
       <div class="ph"><div class="tt"><div class="ico" style="background:rgba(45,212,191,.16);color:#2DD4BF;border:1px solid rgba(45,212,191,.4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><path d="M12 12l6-6"/></svg></div><div><h3 id="hDet">감지 설정</h3><p>레이더 설치 및 낙상 판정 기준</p></div></div></div>
       <div class="fields">
@@ -967,21 +1015,14 @@ html:not(.role-admin) #view-profile :is(input,select,textarea){border-color:tran
         <div class="f full"><label for="sSens">감지 민감도</label><select id="sSens"><option>낮음</option><option>보통</option><option>높음</option></select><span class="help">저장하면 보드·레이더에 적용되고 모든 화면에 같이 바뀝니다 <span id="sensBoard"></span></span></div>
       </div>
     </section>
-    <section class="glass panel" aria-labelledby="hNoti">
-      <div class="ph"><div class="tt"><div class="ico" style="background:rgba(244,63,94,.16);color:#FB7185;border:1px solid rgba(251,113,133,.45)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg></div><div><h3 id="hNoti">알림 및 음성</h3><p>긴급 확정 시 연동 채널</p></div></div></div>
-      <div class="trow"><div><b id="lVoice">허브 음성 안내</b><span>유예 진입 시 스피커로 안내 멘트 송출</span></div><button type="button" class="sw" role="switch" data-k="voice" aria-labelledby="lVoice"></button></div>
-      <div class="trow"><div><b id="lTg">텔레그램 봇 푸시</b><span>앱이 꺼져 있어도 보호자에게 도달</span></div><button type="button" class="sw" role="switch" data-k="tg" aria-labelledby="lTg"></button></div>
-      <div class="trow"><div><b id="lPush">보호자 앱 푸시</b><span>대시보드 앱 진동 및 경고음</span></div><button type="button" class="sw" role="switch" data-k="push" aria-labelledby="lPush"></button></div>
-      <div class="trow"><div><b id="lSms">SMS 문자</b><span>데이터가 없는 보호자용 보조 채널</span></div><button type="button" class="sw" role="switch" data-k="sms" aria-labelledby="lSms"></button></div>
-      <div class="trow"><div><b id="l119">119 자동 연동</b><span>끄면 보호자 확인 후 수동 신고</span></div><button type="button" class="sw" role="switch" data-k="auto119" aria-labelledby="l119"></button></div>
-    </section>
+   </div>
   </div>
   <section class="glass panel" style="margin-top:18px" aria-labelledby="hSys">
     <div class="ph"><div class="tt"><div class="ico" style="background:rgba(56,189,248,.14);color:#38BDF8;border:1px solid rgba(56,189,248,.4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9zM9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/></svg></div><div><h3 id="hSys">장치 정보</h3><p>현재 연결된 노드</p></div></div></div>
     <dl class="sysinfo">
       <dt>노드</dt><dd class="nodeName">대구 102동 거실 #1</dd>
       <dt>센서</dt><dd>60GHz mmWave 레이더</dd>
-      <dt>감지 구역</dt><dd>5.0m × 5.0m · 안전지대 2개 (소파, 침대)</dd>
+      <dt>감지 구역</dt><dd>5.0m × 5.0m · 예외 구역은 지도에서 직접 지정</dd>
       <dt>통신</dt><dd id="sysComm">Wi-Fi · 시뮬레이션 모드</dd>
       <dt>AI 엔진</dt><dd id="sysAi">Claude</dd>
     </dl>
@@ -999,12 +1040,19 @@ html:not(.role-admin) #view-profile :is(input,select,textarea){border-color:tran
     <span class="help" style="display:block;margin-top:8px">2.4GHz 와이파이만 됩니다. 이미 있는 이름을 다시 넣으면 비밀번호가 바뀝니다. 비밀번호는 보드가 받자마자 Firebase에서 지워지고, 사이트에서는 다시 볼 수 없습니다.</span>
     <div class="actions" style="margin-top:12px" id="wfActs"><span class="wfmu" id="wfRes" role="status"></span><button type="button" class="ghost" id="wfRestart">보드 다시 시작</button><button type="button" class="primary" id="wfAdd">와이파이 추가</button></div>
   </section>
-  <section class="glass panel" style="margin-top:18px" aria-labelledby="hOta">
+  <div class="actions"><span class="saved" id="stSaved">✓ 저장되었습니다</span><button type="button" class="ghost" id="stReset">기본값</button><button type="button" class="primary" id="stSave">저장</button></div>
+</div>
+
+<!-- ================= 관리자 (관리자 계정만) ================= -->
+<div class="view" id="view-admin" hidden>
+  <div class="vtitle" style="margin-bottom:16px">
+    <div><h2>관리자</h2><p>관리자 계정에만 보이는 메뉴입니다. 보드 펌웨어처럼 잘못 건드리면 장치가 멈출 수 있는 작업을 모아 두었습니다.</p></div>
+  </div>
+  <section class="glass panel" aria-labelledby="hOta">
     <div class="ph"><div class="tt"><div class="ico" style="background:rgba(167,139,250,.14);color:#A78BFA;border:1px solid rgba(167,139,250,.4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg></div><div><h3 id="hOta">펌웨어 무선 업데이트</h3><p>USB 없이 인터넷으로 보드 펌웨어를 바꿉니다</p></div></div></div>
     <div class="otalist" id="otaList"></div>
-    <span class="help" style="display:block;margin-top:10px">장치마다 파일이 달라요. 거실 = <code>SafeWave_Node\build\거실\SafeWave_Node.ino.bin</code>, 큰방 = <code>…\build\큰방\…</code>, 중앙 컨트롤 = <code>SafeWave_Hub\build\SafeWave_Hub.ino.bin</code>. 다른 장치 파일을 고르면 막아 줍니다. 받는 동안에도 감지는 계속되고, 실패하면 지금 펌웨어 그대로 동작합니다. 파일에는 와이파이 비밀번호가 들어 있어서 관리자만 볼 수 있게 올리고, 끝나면 지웁니다.</span>
+    <span class="help" style="display:block;margin-top:10px">장치마다 파일이 달라요. 센서1 = <code>SafeWave_Node\build\거실\SafeWave_Node.ino.bin</code>, 센서2 = <code>…\build\큰방\…</code>, 중앙 컨트롤 = <code>SafeWave_Hub\build\SafeWave_Hub.ino.bin</code>. 다른 장치 파일을 고르면 막아 줍니다. 받는 동안에도 감지는 계속되고, 실패하면 지금 펌웨어 그대로 동작합니다. 파일에는 와이파이 비밀번호가 들어 있어서 관리자만 볼 수 있게 올리고, 끝나면 지웁니다.</span>
   </section>
-  <div class="actions"><span class="saved" id="stSaved">✓ 저장되었습니다</span><button type="button" class="ghost" id="stReset">기본값</button><button type="button" class="primary" id="stSave">저장</button></div>
 </div>
 
 <!-- ================= 회원 관리 (관리자) ================= -->
@@ -1025,7 +1073,7 @@ html:not(.role-admin) #view-profile :is(input,select,textarea){border-color:tran
 
 </main>
 
-<footer class="foot"><span>SafeWave mmWave Radar Intelligent Care Solution © 2026</span><span>대구 102동 60GHz 노드 (거실 #1 · 큰방 #2) · <span id="footAi">Claude AI</span></span></footer>
+<footer class="foot"><span>SafeWave mmWave Radar Intelligent Care Solution © 2026</span><span>대구 102동 60GHz 노드 (<span data-nm="daegu-102-1">센서1</span> · <span data-nm="daegu-102-2">센서2</span>) · <span id="footAi">Claude AI</span></span></footer>
 
 <div class="modal" id="modal" role="alertdialog" aria-modal="true" aria-labelledby="mT">
   <div class="mbox">
@@ -1316,11 +1364,14 @@ window.SWAuth = (function(){
   const today = () => { const d = new Date(); return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); };
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-  /* ---------- 방(노드) 고르기: 거실·큰방. 고른 방은 이 브라우저에 기억 ---------- */
+  /* ---------- 방(노드) 고르기. 고른 방은 이 브라우저에 기억 ---------- */
+  // 센서 이름: 처음엔 센서1·센서2, 관리자가 장치 설정 → 센서 이름에서 바꿈 (Firebase shared/<노드>/name).
+  // 받은 이름은 이 브라우저에 기억해서 다음에 열 때 처음부터 그 이름으로 보임
   const NODES = [
-    { id: 'daegu-102-1', room: '거실', name: '대구 102동 거실 #1' },
-    { id: 'daegu-102-2', room: '큰방', name: '대구 102동 큰방 #2' }
+    { id: 'daegu-102-1', def: '센서1', room: '센서1', name: '센서1' },
+    { id: 'daegu-102-2', def: '센서2', room: '센서2', name: '센서2' }
   ];
+  try{ const nm = JSON.parse(localStorage.getItem('sw-names') || '{}'); NODES.forEach(n => { if (nm[n.id]) n.room = n.name = nm[n.id]; }); }catch(e){}
   // 보는 방식: 거실만 / 큰방만 / 둘 다 나란히(both). both 일 땐 이 페이지 안에 방마다 작은 화면(embed=1)을 하나씩 띄움
   const QS = new URLSearchParams(location.search);
   const EMBED = QS.get('embed') === '1';            // 나란히 보기 안에 들어간 방 화면
@@ -1339,24 +1390,15 @@ window.SWAuth = (function(){
     get(k){ try{ const v = localStorage.getItem(nk(k)); return v ? JSON.parse(v) : null; }catch(e){ return null; } },
     set(k,v){ try{ localStorage.setItem(nk(k), JSON.stringify(v)); return true; }catch(e){ return false; } }
   };
-  const DEF_PROFILE = {
-    name:'김영순', age:78, sex:'여', blood:'A+', addr:'대구 ○○구 ○○로 102동 1203호',
-    cond:'고혈압, 골다공증', meds:'혈압약 (아침 1회)', mob:'실내 보행 보조기 사용', note:'야간 화장실 이동이 잦음',
-    contacts:[
-      { name:'김민수', rel:'아들', phone:'010-0000-1111' },
-      { name:'이정희', rel:'딸', phone:'010-0000-2222' },
-      { name:'○○노인복지관', rel:'담당 사회복지사', phone:'053-000-0000' }
-    ]
-  };
-  const DEF_SET = { inst:2.6, th:0.5, grace:12, sens:'보통', voice:true, tg:true, push:true, sms:false, auto119:true };
+  // 대상자 정보: 처음엔 비어 있음 (관리자가 대상자 정보 화면에서 입력)
+  const DEF_PROFILE = { name:'', age:'', sex:'', blood:'', addr:'', cond:'', meds:'', mob:'', note:'', contacts:[] };
+  const pnm = () => P.name || '대상자';   // 문장에 넣을 이름 (비어 있으면 "대상자")
+  const DEF_SET = { inst:2.6, th:0.5, grace:12, sens:'보통', voice:true, tg:true, push:true, sms:true, auto119:true };
   let P = Object.assign({}, DEF_PROFILE, store.get('sw-profile') || {});
   if (!Array.isArray(P.contacts)) P.contacts = DEF_PROFILE.contacts.slice();
   let C = Object.assign({}, DEF_SET, store.get('sw-settings') || {});
 
-  const DEF_ZONES = [
-    { name:'침대', x:3.35, y:0.25, w:1.4, h:2.1, hgt:0.5 },
-    { name:'소파', x:0.25, y:3.75, w:2.2, h:0.95, hgt:0.45 }
-  ];
+  const DEF_ZONES = [];   // 기본 침대·소파 구역은 뺌 · 예외 구역은 지도에서 직접 그림
   let customZones = (store.get('sw-zones') || []).filter(z => z && isFinite(z.x) && isFinite(z.w));
   const allZones = () => DEF_ZONES.concat(customZones);
   const zoneAt = (x, y) => allZones().find(z => x >= z.x && x <= z.x + z.w && y >= z.y && y <= z.y + z.h);
@@ -1522,9 +1564,9 @@ window.SWAuth = (function(){
     normal: REAL
       ? (LIVE.src ? ['● 정상 NORMAL', LIVE.present ? '재실 감지 · 낙상 신호 없음' : '감지 구역에 사람 없음', `60GHz 레이더(MR60FDA2)가 실시간으로 재실·낙상 신호를 감시하고 있습니다. 표시되는 값은 모두 실제 측정값입니다.`]
                   : ['○ 레이더 미연결', '레이더 연결 대기 중', '위쪽 [USB 레이더 연결] 또는 [원격 연결]을 누르면 실제 측정값이 표시됩니다. 연결 전에는 아무 값도 표시하지 않습니다.'])
-      : ['● 정상 NORMAL','대상자 실시간 호흡 및 움직임 정상 감지됨',`mmWave 레이더가 ${P.name} 님의 위치·높이·미세 호흡을 추적하고 있습니다. 안전지대(침대/소파) 밖에서 특이사항이 없습니다.`],
+      : ['● 정상 NORMAL','대상자 실시간 호흡 및 움직임 정상 감지됨',`mmWave 레이더가 ${pnm()} 님의 위치·높이·미세 호흡을 추적하고 있습니다. 특이사항이 없습니다.`],
     grace: REAL ? ['▲ 낙상 의심 유예 GRACE',`레이더 낙상 신호 · ${C.grace}초 기립 확인 중`,`레이더가 낙상을 감지했습니다. ${C.grace}초 안에 일어나면 오탐지로 자동 해제되고, 그대로면 긴급으로 확정됩니다.`] : ['▲ 낙상 의심 유예 GRACE',`Z축 높이 급감 포착 · ${C.grace}초 음성 확인 진행 중`,`바닥 수준 높이(Z < ${C.th}m)가 감지되었습니다. ${C.voice ? '허브 스피커로 안내를 송출하고 ' : ''}미세 움직임·호흡 반응을 ${C.grace}초간 확인합니다.`],
-    emergency:['■ 긴급 낙상 확정 EMERGENCY',`${C.grace}초간 무반응 · 보호자${C.auto119 ? ' 및 119' : ''} 긴급 연동 발령`,`${P.name} 님의 응답이 확인되지 않아 최종 낙상으로 확정했습니다. ${channels().join('·') || '알림 채널 없음'}으로 보호자에게 알렸습니다${C.auto119 ? ' · 119 위치 전송 완료' : ' · 119는 보호자 판단 대기'}.${LIVE.src || REAL ? '' : ' (시뮬레이션)'}`]
+    emergency:['■ 긴급 낙상 확정 EMERGENCY',`${C.grace}초간 무반응 · 보호자${C.auto119 ? ' 및 119' : ''} 긴급 연동 발령`,`${pnm()} 님의 응답이 확인되지 않아 최종 낙상으로 확정했습니다. ${channels().join('·') || '알림 채널 없음'}으로 보호자에게 알렸습니다${C.auto119 ? ' · 119 위치 전송 완료' : ' · 119는 보호자 판단 대기'}.${LIVE.src || REAL ? '' : ' (시뮬레이션)'}`]
   })[m];
 
   /* ---------- 로그 ---------- */
@@ -1586,16 +1628,17 @@ window.SWAuth = (function(){
 
   /* ---------- 탭 ---------- */
   function go(tab){
-    if ((tab === 'settings' || tab === 'users') && !SWAuth.isAdmin()) return;   // 관리자 전용 화면
+    if ((tab === 'settings' || tab === 'users' || tab === 'admin') && !SWAuth.isAdmin()) return;   // 관리자 전용 화면
     if (BOTH) tab = 'both';                 // 함께 보기: 나란히 화면만 (로그·설정은 방 하나를 골라서)
     else if (tab === 'both') tab = 'live';
     S.tab = tab;
-    ['live','both','log','profile','settings','users'].forEach(v => { $('view-'+v).hidden = v !== tab; });
+    ['live','both','log','profile','settings','users','admin'].forEach(v => { $('view-'+v).hidden = v !== tab; });
     document.querySelectorAll('.nav button[data-go]').forEach(b => { if (b.dataset.go === tab) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); });
     const vNow = BOTH ? 'both' : CUR.id;    // 방 탭(거실 관제·큰방 관제·함께 보기)
     document.querySelectorAll('.nav button[data-view]').forEach(b => { if ((tab === 'live' || tab === 'both') && b.dataset.view === vNow) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); });
     if (tab === 'profile') fillProfileForm();
-    if (tab === 'settings'){ fillSettingsForm(); if (window.swWifiLoad && SWAuth.token()) window.swWifiLoad(); if (window.swOtaInit && SWAuth.token()) window.swOtaInit(); }
+    if (tab === 'settings'){ fillSettingsForm(); if (window.swWifiLoad && SWAuth.token()) window.swWifiLoad(); }
+    if (tab === 'admin' && window.swOtaInit && SWAuth.token()) window.swOtaInit();
     if (tab === 'users') SWAuth.loadUsers();
     if (tab === 'live') requestAnimationFrame(fitAll);
     window.scrollTo({ top:0, behavior: reduce ? 'auto' : 'smooth' });
@@ -1605,16 +1648,17 @@ window.SWAuth = (function(){
   /* ---------- 대상자 / 연락처 ---------- */
   function renderProfile(){
     $('avatar').textContent = (P.name || '?').trim().charAt(0) || '?';
-    $('pName').innerHTML = esc(P.name || '이름 없음');
-    $('pMeta').textContent = `${P.age || '-'}세 · ${P.sex || '-'} · 혈액형 ${P.blood || '-'}`;
-    $('pAddr').textContent = P.addr || '-'; $('pCond').textContent = P.cond || '없음'; $('pMeds').textContent = P.meds || '-';
+    $('pName').innerHTML = esc(P.name || '아직 입력하지 않았어요');
+    const meta = [P.age ? P.age + '세' : '', P.sex || '', P.blood && P.blood !== '미상' ? '혈액형 ' + P.blood : ''].filter(Boolean).join(' · ');
+    $('pMeta').textContent = meta || (P.name ? '' : '상세 정보 · 수정에서 입력해 주세요');
+    $('pAddr').textContent = P.addr || '-'; $('pCond').textContent = P.cond || '-'; $('pMeds').textContent = P.meds || '-';
     $('pMob').textContent = P.mob || '-'; $('pNote').textContent = P.note || '-';
-    $('mWho').textContent = `${P.name} (${P.age}세 · ${P.sex})`;
+    $('mWho').textContent = pnm() + (meta ? ` (${meta})` : '');
     const ph = (P.contacts || []).filter(c => c && (c.name || c.phone));
     $('contacts').innerHTML = ph.length ? ph.map((c,i) => `
       <div class="ct">
         <div class="ci">${i+1}순위</div>
-        <div style="min-width:0"><div class="cn">${esc(c.name)} <span class="sent">알림 발송</span></div><div class="cr">${esc(c.rel)}</div><div class="cp">${esc(c.phone)}</div></div>
+        <div style="min-width:0"><div class="cn">${esc(c.name)} ${c.sms === false ? '' : '<span class="sent">자동 문자</span>'}</div><div class="cr">${esc(c.rel)}</div><div class="cp">${esc(c.phone)}</div></div>
         ${c.phone ? `<a href="tel:${esc(String(c.phone).replace(/[^0-9+]/g,''))}" aria-label="${esc(c.name)}에게 전화"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8.1 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.8 2z"/></svg></a>` : '<span></span>'}
       </div>`).join('') : '<div class="out" style="min-height:auto;margin:0"><div class="empty" style="padding:16px">등록된 연락처가 없습니다. 대상자 정보에서 추가하세요.</div></div>';
   }
@@ -1631,13 +1675,14 @@ window.SWAuth = (function(){
         <div class="f"><label for="cn${i}">${i+1}순위 이름</label><input id="cn${i}" data-k="name" value="${esc(c.name)}"></div>
         <div class="f"><label for="cr${i}">관계</label><input id="cr${i}" data-k="rel" value="${esc(c.rel)}"></div>
         <div class="f"><label for="cp${i}">전화번호</label><input id="cp${i}" data-k="phone" type="tel" inputmode="tel" value="${esc(c.phone)}"></div>
+        <label class="smsck" title="긴급이면 이 번호로 문자를 자동으로 보냅니다"><input type="checkbox" data-k="sms"${c.sms === false ? '' : ' checked'}> 자동 문자</label>
         <button type="button" class="del" aria-label="${i+1}순위 연락처 삭제">×</button>
       </div>`).join('') || '<p style="color:var(--mu);font-size:13px;margin:0">연락처가 없습니다. 추가 버튼을 눌러 주세요.</p>';
     $('addCt').disabled = list.length >= 4;
   }
   function readContactEditor(){
     return [...$('cEdit').querySelectorAll('.cedit')].map(row => {
-      const o = {}; row.querySelectorAll('input').forEach(inp => o[inp.dataset.k] = inp.value.trim()); return o;
+      const o = {}; row.querySelectorAll('input').forEach(inp => o[inp.dataset.k] = inp.type === 'checkbox' ? inp.checked : inp.value.trim()); return o;
     });
   }
   $('cEdit').addEventListener('click', e => {
@@ -1647,7 +1692,7 @@ window.SWAuth = (function(){
   $('addCt').onclick = () => { const list = readContactEditor(); if (list.length < 4){ list.push({ name:'', rel:'', phone:'' }); renderContactEditor(list); } };
   const flash = id => { $(id).classList.add('on'); setTimeout(() => $(id).classList.remove('on'), 1800); };
   $('pfSave').onclick = () => {
-    P = { name:$('fName').value.trim() || '이름 없음', age:+$('fAge').value || '', sex:$('fSex').value, blood:$('fBlood').value,
+    P = { name:$('fName').value.trim(), age:+$('fAge').value || '', sex:$('fSex').value, blood:$('fBlood').value,
       addr:$('fAddr').value.trim(), cond:$('fCond').value.trim(), meds:$('fMeds').value.trim(), mob:$('fMob').value.trim(), note:$('fNote').value.trim(),
       contacts: readContactEditor().filter(c => c.name || c.phone) };
     store.set('sw-profile', P); renderProfile(); render(); flash('pfSaved'); logShared('대상자 정보 저장', 'sys');
@@ -1705,8 +1750,9 @@ window.SWAuth = (function(){
     const pm = BOTH ? bothWorst() : m;   // 나란히 보기: 두 방 중 가장 위급한 상태
     $('pill').className = 'pill ' + pm;
     $('pillTx').textContent = pm === 'normal' ? '정상 NORMAL' : pm === 'grace' ? '유예 GRACE' : '긴급 EMERGENCY';
+    try{ renderRoomSt(); }catch(e){}   // 위쪽 방별 상태 칸도 바로
     const set = (id, cls, txt) => { $(id).className = 'step' + (cls ? ' '+cls : ''); $(id+'t').textContent = txt; };
-    if (m === 'normal'){ set('s1', S.rest ? 'done' : '', S.rest ? '✓ 안전지대 제외' : '정상 감시 중'); set('s2','','대기 중'); set('s3','','대기 중'); }
+    if (m === 'normal'){ set('s1', S.rest ? 'done' : '', S.rest ? '✓ 예외 구역 제외' : '정상 감시 중'); set('s2','','대기 중'); set('s3','','대기 중'); }
     if (m === 'grace'){ set('s1','done', REAL ? '✓ 낙상 신호 포착' : '✓ Z축 낙상 포착'); set('s2','active','검증 중'); set('s3','','대기 중'); }
     if (m === 'emergency'){ set('s1','done','✓ 포착'); set('s2','done','✓ 무반응 확인'); set('s3','alert','발령 완료'); }
     $('bR').disabled = m === 'normal' && !S.rest;
@@ -1868,7 +1914,7 @@ window.SWAuth = (function(){
     $('mapBox').classList.toggle('editing', on);
     $('map').style.touchAction = on || S.view === '3d' ? 'none' : 'pan-y';
     $('hint').style.display = on ? 'none' : '';
-    $('mapSub').textContent = on ? '레이더 영역을 드래그해서 낙상 예외 구역을 지정하세요' : '안전지대(침대/소파) 표시 · 대상자 재실 및 실측 높이(Z)';
+    $('mapSub').textContent = on ? '레이더 영역을 드래그해서 낙상 예외 구역을 지정하세요' : '예외 구역 표시 · 대상자 재실 및 실측 높이(Z)';
     log(on ? '예외 구역 편집 모드 시작' : '예외 구역 편집 완료', 'sys');
   }
   $('zEdit').onclick = () => setEditing(!editing);
@@ -1885,7 +1931,7 @@ window.SWAuth = (function(){
   };
   $('zReset').onclick = () => { customZones = []; store.set('sw-zones', customZones); renderZones(); shareSave({ zones: null }, '예외 구역 초기화'); logShared('사용자 지정 예외 구역 전체 초기화', 'wn'); };
   function renderZones(){
-    $('zlist').innerHTML = allZones().map(z => `<span class="zchip${z.custom ? ' custom' : ''}">${z.custom ? '예외' : '안전지대'} · ${esc(z.name)} <small>${z.w.toFixed(1)}×${z.h.toFixed(1)}m</small></span>`).join('');
+    $('zlist').innerHTML = allZones().map(z => `<span class="zchip${z.custom ? ' custom' : ''}">${z.custom ? '예외' : '안전지대'} · ${esc(z.name)} <small>${z.w.toFixed(1)}×${z.h.toFixed(1)}m</small></span>`).join('') || '<span class="zchip">예외 구역 없음 · 지도에서 직접 그려 주세요</span>';
   }
 
   const COL = { teal:'#2DD4BF', em:'#34D399', amb:'#FBBF24', red:'#F43F5E', ind:'#818CF8' };
@@ -2466,14 +2512,14 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
       if (mode === 'grace'){
         this.beep(880, 0.25);
         this.beepT = setInterval(() => this.beep(880, 0.18, 0.18), 1000);
-        notify('[낙상 의심] 유예 시작', `${P.name} 님 · ${C.grace}초 동안 반응을 확인합니다.`, false);
+        notify('[낙상 의심] 유예 시작', `${pnm()} 님 · ${C.grace}초 동안 반응을 확인합니다.`, false);
       }
       if (mode === 'emergency'){
         this.startSiren();
         let on = false;
         this.titleT = setInterval(() => { on = !on; document.title = on ? '🚨 긴급 낙상 확정' : this.baseTitle; }, 700);
         if (navigator.vibrate) try{ navigator.vibrate([600,250,600,250,600,250,600]); }catch(e){}
-        notify('🚨 [긴급] 낙상 확정', `${P.name} 님이 ${C.grace}초 동안 반응이 없습니다. 즉시 확인하세요.`, true);
+        notify('🚨 [긴급] 낙상 확정', `${pnm()} 님이 ${C.grace}초 동안 반응이 없습니다. 즉시 확인하세요.`, true);
       }
     }
   };
@@ -2763,23 +2809,37 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
   window.swWifiIcon = wifiIcon; window.swWifiWord = wifiWord;
   // 어느 장치의 와이파이를 볼지 (거실·큰방 레이더, 중앙 컨트롤). 처음엔 지금 보는 방
   const WF_DEVS = [
-    { id: 'daegu-102-1', label: '거실' },
-    { id: 'daegu-102-2', label: '큰방' },
+    { id: 'daegu-102-1', get label(){ return NODES[0].room; } },
+    { id: 'daegu-102-2', get label(){ return NODES[1].room; } },
     { id: 'hub-1', label: '중앙' }
   ];
-  const WF = { info: null, wait: 0, timer: 0, dev: CUR.id };
+  const WF = { info: null, wait: 0, timer: 0, dev: CUR.id, on: null };
+  // 보드가 지금 켜져서 인터넷에 붙어 있는지: nodes/<장치>/up 값이 계속 바뀌면 켜짐. 12초 넘게 그대로면 "연결 안 됨"
+  // (on: null 확인 중 · true 켜짐 · false 연결 안 됨)
+  async function wfUpCheck(){
+    const dev = WF.dev;
+    try{
+      const r = await fetch(fbPath(`/nodes/${dev}/up`)); if (!r.ok || dev !== WF.dev) return;
+      const v = await r.json(), now = Date.now();
+      if (WF.upDev !== dev){ WF.upDev = dev; WF.up = v; WF.upFirst = now; WF.upAt = 0; }
+      else if (v !== WF.up){ WF.up = v; WF.upAt = now; }
+      const lim = dev === 'hub-1' ? 25000 : 12000;   // 중앙 컨트롤은 10초마다 보고
+      const on = WF.upAt ? now - WF.upAt < lim : (now - WF.upFirst < lim - 3000 ? null : false);
+      if (on !== WF.on){ WF.on = on; wfRender(); }
+    }catch(e){}
+  }
   function wfDevBtns(){
     const box = $('wfDevs'); if (!box) return;
     box.textContent = '';
     WF_DEVS.forEach(d => {
-      const b = el('button', 'wfdev' + (WF.dev === d.id ? ' on' : ''), d.label); b.type = 'button';
+      const b = el('button', 'wfdev' + (WF.dev === d.id ? ' on' : ''), d.label); b.type = 'button'; b.dataset.dev = d.id;
       b.setAttribute('aria-pressed', String(WF.dev === d.id));
       b.title = d.id === 'hub-1' ? '중앙 컨트롤 (주방 스피커)의 와이파이' : d.label + ' 레이더의 와이파이';
       b.onclick = () => {
         if (WF.dev === d.id) return;
         if (WF.pend && WF.pend.op === 'use') return;   // 와이파이를 바꾸는 중에는 기다림
         WF.pend = null; WF.wait = 0;                    // 다른 대기(주변 찾기 등)는 취소하고 바로 바꿈
-        WF.dev = d.id; WF.info = null; WF.scanTime = 0; wfDevBtns(); wfRender();
+        WF.dev = d.id; WF.info = null; WF.scanTime = 0; WF.on = null; WF.upDev = null; wfDevBtns(); wfRender(); wfUpCheck();
         $('wfRes').textContent = `${d.label} ${d.id === 'hub-1' ? '컨트롤' : '레이더'} 와이파이를 불러오는 중…`;
         wfLoad().then(i => { if (i && i.list) wfSend({ op: 'scan' }, true); });
       };
@@ -2811,16 +2871,18 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
       ul.appendChild(el('li', 'wfmu', i === false ? '목록을 못 불러왔습니다 (Firebase 규칙에 wifiinfo 추가했는지 확인)' : '아직 보드 정보가 없습니다 (새 펌웨어를 올리고 보드가 인터넷에 붙으면 나타납니다)'));
       nu.appendChild(el('li', 'wfmu', '—'));
     } else {
+      const off = WF.on === false;   // 보드가 꺼졌거나 인터넷이 끊김 → 아래는 마지막으로 받은 정보
+      if (off) ul.appendChild(el('li', 'wfmu wfoff', '보드와 연결이 끊겼어요 (전원·와이파이 확인). 아래는 마지막으로 받은 정보예요.'));
       if (!i.list.length) ul.appendChild(el('li', 'wfmu', '저장된 와이파이가 없습니다'));
       i.list.forEach(w => {
         const li = el('li'), cur = i.cur && i.cur === w.ssid;
-        const sg = sigNode(w.rssi), db = el('span', 'wfdb', w.rssi ? `${wifiWord(w.rssi)} ${w.rssi}dBm` : '안 보임');
-        if (cur){ sg.dataset.live = '1'; db.dataset.live = '1'; }   // 연결된 것은 보드 상태값으로 실시간 갱신
+        const sg = sigNode(off ? 0 : w.rssi), db = el('span', 'wfdb', off ? '—' : w.rssi ? `${wifiWord(w.rssi)} ${w.rssi}dBm` : '안 보임');
+        if (cur && !off){ sg.dataset.live = '1'; db.dataset.live = '1'; }   // 연결된 것은 보드 상태값으로 실시간 갱신
         li.appendChild(sg);
         li.appendChild(el('b', null, w.ssid));
         li.appendChild(db);
         const going = !cur && WF.pend && WF.pend.op === 'use' && WF.pend.ssid === w.ssid;   // 바꾸는 중인 대상
-        if (cur) li.appendChild(el('span', 'tag cur', '연결됨'));
+        if (cur) li.appendChild(off ? el('span', 'tag off', '연결 안 됨') : WF.on === null ? el('span', 'tag', '확인 중…') : el('span', 'tag cur', '연결됨'));
         if (going){ li.classList.add('going'); li.appendChild(el('span', 'tag going', '연결 중…')); }
         li.appendChild(el('span', 'tag', w.src === 'site' ? '사이트에서 추가' : w.src === 'fw+site' ? '펌웨어 · 비번 변경' : '펌웨어'));
         if (!cur && !going){
@@ -2910,6 +2972,7 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
   setInterval(() => {
     const v = $('view-settings'); const vis = v && !v.hidden;
     if (WF.pend || (vis && Date.now() - wfLastLoad > 8000)){ wfLastLoad = Date.now(); wfLoad(); }
+    if (vis && Date.now() - (WF.upChk || 0) > 2900){ WF.upChk = Date.now(); wfUpCheck(); }
   }, 1500);
   async function wfLoad(){
     let info;
@@ -3215,7 +3278,7 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
   const switchRoom = id => setRoomView(id);
   document.querySelectorAll('.nav button[data-view]').forEach(b => b.addEventListener('click', () => setRoomView(b.dataset.view)));
   document.querySelectorAll('.roomName').forEach(e => e.textContent = CUR.room);
-  document.querySelectorAll('.nodeName').forEach(e => e.textContent = BOTH ? '거실 · 큰방' : CUR.name);
+  document.querySelectorAll('.nodeName').forEach(e => e.textContent = BOTH ? NODES.map(n => n.room).join(' · ') : CUR.name);
   var OTHER = {};   // var: 위쪽 화면 그리기가 먼저 불려도 안전하게
   var BST = {};     // 함께 보기: 방 화면들이 알려 주는 상태 {id: {mode, left, at}}
   // 위쪽 방 버튼 = 켜고 끄는 스위치. 거실·큰방 둘 다 켜면 나란히, 하나만 켜면 그 방만 (최소 하나는 켜져 있음)
@@ -3236,7 +3299,101 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
       };
       box.appendChild(b);
     });
+    renderRoomSt();
   }
+
+  // ---- 위쪽 방별 상태 칸: 초록 안전 · 노랑 주의(낙상 의심) · 빨강 경고(긴급)/센서 없음 ----
+  function roomState(n){
+    const now = Date.now();
+    if (BOTH){ const b = BST[n.id]; return b && now - b.at < 15000 && b.live ? { on: true, mode: b.mode } : { on: false }; }
+    if (n === CUR){
+      let up = 0; try{ up = lastUpAt; }catch(e){}
+      const on = LIVE.src === 'usb' || (LIVE.src === 'remote' && now - up < 10000);
+      return on ? { on: true, mode: S.mode } : { on: false };
+    }
+    const o = OTHER[n.id];
+    return o && o.fresh ? { on: true, mode: o.state } : { on: false };
+  }
+  function renderRoomSt(){
+    const box = $('roomSt'); if (!box) return;
+    const parts = NODES.map(n => {
+      const s = roomState(n);
+      const [cls, word] = !s.on ? ['cr', '센서 없음'] : s.mode === 'emergency' ? ['cr hot', '경고'] : s.mode === 'grace' ? ['wn', '주의'] : ['ok', '안전'];
+      return { n, cls, word };
+    });
+    const key = parts.map(p => p.n.room + p.cls + p.word).join('|');
+    if (box.dataset.k === key) return;   // 바뀐 게 없으면 다시 그리지 않음
+    box.dataset.k = key; box.textContent = '';
+    parts.forEach(({ n, cls, word }) => {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'rs ' + cls;
+      b.title = `${n.room} 센서 · ${word}${n === CUR && !BOTH ? '' : ' · 누르면 이 방 보기'}`;
+      const i = document.createElement('i'); i.setAttribute('aria-hidden', 'true');
+      const nm = document.createElement('b'); nm.textContent = n.room;
+      b.append(i, nm, document.createTextNode(' ' + word));
+      b.onclick = () => setRoomView(n.id);
+      box.appendChild(b);
+    });
+  }
+
+  // ---- 센서 이름 (shared/<노드>/name) ----
+  function applyNames(){
+    document.querySelectorAll('[data-nm]').forEach(e => { const n = nodeOf(e.dataset.nm); if (n) e.textContent = n.room + (e.dataset.nmSuf || ''); });
+    document.querySelectorAll('.roomName').forEach(e => e.textContent = CUR.room);
+    document.querySelectorAll('.nodeName').forEach(e => e.textContent = BOTH ? NODES.map(n => n.room).join(' · ') : CUR.name);
+    document.querySelectorAll('.wfdev').forEach(b => { const d = WF_DEVS.find(x => b.dataset.dev === x.id); if (d && d.id !== 'hub-1') b.textContent = d.label; });
+    roomBtns(); renderNameForm();
+  }
+  async function loadNames(){
+    if (!SWAuth.token()) return;
+    let ch = false;
+    await Promise.all(NODES.map(async n => {
+      try{
+        const r = await fetch(fbPath(`/shared/${n.id}/name`)); if (!r.ok) return;
+        const v = await r.json();
+        const nm = typeof v === 'string' && v.trim() ? v.trim() : n.def;
+        if (nm !== n.room){ n.room = n.name = nm; ch = true; }
+      }catch(e){}
+    }));
+    if (ch){
+      try{ const o = {}; NODES.forEach(n => o[n.id] = n.room); localStorage.setItem('sw-names', JSON.stringify(o)); }catch(e){}
+      applyNames();
+    }
+  }
+  function renderNameForm(){
+    const box = $('nameFields'); if (!box) return;
+    if (box.dataset.built){ NODES.forEach(n => { const inp = $('nm-' + n.id); if (inp && document.activeElement !== inp && !inp.dataset.dirty) inp.value = n.room; }); return; }
+    box.dataset.built = '1';
+    NODES.forEach((n, i) => {
+      const f = document.createElement('div'); f.className = 'f full';
+      const lb = document.createElement('label'); lb.htmlFor = 'nm-' + n.id; lb.textContent = `센서 ${i + 1} (${n.id})`;
+      const row = document.createElement('div'); row.className = 'nmrow';
+      const inp = document.createElement('input'); inp.id = 'nm-' + n.id; inp.maxLength = 10; inp.value = n.room; inp.placeholder = n.def;
+      inp.oninput = () => { inp.dataset.dirty = '1'; };
+      const sv = document.createElement('button'); sv.type = 'button'; sv.className = 'ghost'; sv.textContent = '저장';
+      const help = document.createElement('span'); help.className = 'help'; help.setAttribute('role', 'status');
+      help.textContent = '예: 거실, 큰방, 안방 · 비우고 저장하면 ' + n.def;
+      sv.onclick = async () => {
+        const v = inp.value.replace(/[|;"\\<>]/g, '').trim().slice(0, 10);
+        const old = n.room;
+        if ((v || n.def) === old){ help.textContent = '바뀐 게 없어요'; delete inp.dataset.dirty; return; }
+        sv.disabled = true; help.textContent = '저장하는 중…';
+        try{
+          const r = await fetch(fbPath(`/shared/${n.id}/name`), { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(v || null) });
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          n.room = n.name = v || n.def; delete inp.dataset.dirty;
+          try{ const o = {}; NODES.forEach(x => o[x.id] = x.room); localStorage.setItem('sw-names', JSON.stringify(o)); }catch(e){}
+          applyNames();
+          help.textContent = `저장했어요 · 모든 화면과 보호자 앱에 '${n.room}'(으)로 보여요`;
+          logShared(`센서 이름 변경: ${old} → ${n.room}`, 'sys');
+        }catch(e){ help.textContent = '저장하지 못했어요 (' + e.message + ') · 관리자 계정인지 확인해 주세요'; }
+        sv.disabled = false;
+      };
+      row.append(inp, sv); f.append(lb, row, help); box.appendChild(f);
+    });
+  }
+  renderNameForm();
+  if (REAL) SWAuth.ready.then(() => { loadNames(); setInterval(loadNames, 15000); });
+
   function bothWorst(){
     let w = 'normal';
     Object.values(BST || {}).forEach(s => { if (Date.now() - s.at < 15000 && (s.mode === 'emergency' || (s.mode === 'grace' && w === 'normal'))) w = s.mode; });
@@ -3248,9 +3405,9 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
     NODES.forEach(n => {
       const col = document.createElement('section'); col.className = 'bothcol glass';
       const hd = document.createElement('div'); hd.className = 'bothhd';
-      const t = document.createElement('b'); t.textContent = n.name;
+      const t = document.createElement('b'); t.textContent = n.name; t.dataset.nm = n.id;
       const st = document.createElement('span'); st.className = 'bst'; st.id = 'bst-' + n.id; st.textContent = '연결 중…';
-      const op = document.createElement('button'); op.type = 'button'; op.className = 'lvb'; op.textContent = `${n.room}만 보기`; op.onclick = () => setRoomView(n.id);
+      const op = document.createElement('button'); op.type = 'button'; op.className = 'lvb'; op.textContent = `${n.room}만 보기`; op.dataset.nm = n.id; op.dataset.nmSuf = '만 보기'; op.onclick = () => setRoomView(n.id);
       hd.append(t, st, op);
       const f = document.createElement('iframe'); f.title = n.name + ' 실시간 관제'; f.src = `?node=${encodeURIComponent(n.id)}&embed=1`; f.loading = 'eager';
       col.append(hd, f); grid.appendChild(col);
@@ -3258,7 +3415,7 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
     window.addEventListener('message', e => {
       if (e.origin !== location.origin || !e.data || e.data.sw !== 'mode') return;
       const id = e.data.node, prev = BST[id] && BST[id].mode;
-      BST[id] = { mode: e.data.mode, left: e.data.left, at: Date.now() };
+      BST[id] = { mode: e.data.mode, left: e.data.left, at: Date.now(), live: !!e.data.live };
       const n = nodeOf(id), el = $('bst-' + id);
       if (el) { el.className = 'bst ' + e.data.mode; el.textContent = e.data.mode === 'emergency' ? '🚨 긴급' : e.data.mode === 'grace' ? `⚠ 유예 ${e.data.left != null ? Math.ceil(e.data.left) + '초' : ''}` : e.data.live ? '● 정상' : '○ 보드 대기'; }
       if (n && prev && prev !== e.data.mode && e.data.mode !== 'normal') log(`[${n.room}] ${e.data.mode === 'emergency' ? '긴급 · 낙상 확정' : '낙상 의심 · 유예 시작'}`, e.data.mode === 'emergency' ? 'cr' : 'wn');
@@ -3340,8 +3497,8 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
   // .bin 을 12KB 씩 base64 로 ota/<장치>/c/<번호> 에 올리고 → meta → cmd/<장치> "OTA"
   // 보드가 조각을 받아 새 펌웨어로 바꾸고 ota/<장치>/status 에 진행률을 올림. 끝나면 조각은 지움 (와이파이 비밀번호가 들어 있어서)
   const OTA_DEV = [
-    { id: 'daegu-102-1', name: '거실 레이더', sub: '대구 102동 거실 #1', folder: '거실' },
-    { id: 'daegu-102-2', name: '큰방 레이더', sub: '대구 102동 큰방 #2', folder: '큰방' },
+    { id: 'daegu-102-1', get name(){ return NODES[0].room + ' 레이더'; }, sub: 'daegu-102-1 · 펌웨어 폴더 거실', folder: '거실' },
+    { id: 'daegu-102-2', get name(){ return NODES[1].room + ' 레이더'; }, sub: 'daegu-102-2 · 펌웨어 폴더 큰방', folder: '큰방' },
     { id: 'hub-1', name: '중앙 컨트롤', sub: '주방 식탁 경고 스피커', folder: 'hub', path: 'SafeWave_Hub\\build\\SafeWave_Hub.ino.bin', hub: true }
   ];
   const OTA = { busy: null };   // 지금 업데이트 중인 장치 id (한 번에 하나만)
@@ -3355,7 +3512,8 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
     OTA_DEV.forEach(dv => {
       const row = el('div', 'otarow' + (dv.soon ? ' soon' : ''));
       const hd = el('div', 'otahd');
-      hd.append(el('b', null, dv.name), el('span', 'otaid', dv.sub));
+      const nb = el('b', null, dv.name); if (NODES.some(n => n.id === dv.id)){ nb.dataset.nm = dv.id; nb.dataset.nmSuf = ' 레이더'; }
+      hd.append(nb, el('span', 'otaid', dv.sub));
       const fw = el('span', 'otafw', dv.soon ? '—' : '불러오는 중…'); hd.appendChild(fw);
       const bar = el('div', 'otabar'); bar.hidden = true; const barIn = el('div', 'otabar-in'); bar.appendChild(barIn);
       const ctl = el('div', 'otactl');
@@ -3410,7 +3568,7 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
       d.go.disabled = !!OTA.busy || !d.f || !(n && n.fw);
     });
   }
-  setInterval(() => { const v = $('view-settings'); if (v && !v.hidden){ otaBuild(); if (!OTA.busy) otaPoll(); } }, 5000);
+  setInterval(() => { const v = $('view-admin'); if (v && !v.hidden){ otaBuild(); if (!OTA.busy) otaPoll(); } }, 5000);
   window.swOtaInit = () => { otaBuild(); otaPoll(); };   // 설정 화면을 열 때 바로
   async function otaStart(id){
     const d = OD[id], dv = d.dv, f = d.f;
