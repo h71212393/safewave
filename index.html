@@ -540,6 +540,7 @@ html.embed body{background:transparent}
 .hero .glow{filter:none;opacity:.35}
 .modal,.dlg{backdrop-filter:none;-webkit-backdrop-filter:none}
 .real .simctl{display:none}
+.real .sim-only{display:none}   /* 호흡은 MR60FDA2 가 재지 않음 → 실제 레이더 화면에선 숨김 (시뮬레이션 ?demo 에서만) */
 .nodata{color:var(--mu)!important;text-shadow:none!important}
 
 /* ---------- 로그인 · 권한 ---------- */
@@ -716,7 +717,7 @@ html:not(.role-admin) #view-profile :is(input,select,textarea){border-color:tran
         <div class="sbox" id="sbox" aria-hidden="true"></div>
         <div>
           <div><span class="sbadge" id="sbadge">● 정상 NORMAL</span><span class="gbadge">유예 타이머 <b id="gsec">12</b>초 남음</span></div>
-          <h2 id="heroTitle">대상자 실시간 호흡 및 움직임 정상 감지됨</h2>
+          <h2 id="heroTitle">대상자 재실 및 움직임 감시 중</h2>
           <p id="heroDesc"></p>
         </div>
       </div>
@@ -736,8 +737,8 @@ html:not(.role-admin) #view-profile :is(input,select,textarea){border-color:tran
         <p id="s1d">Z축 높이 급감(Z &lt; 0.5m) 및 레이더 낙상 신호 감지</p>
       </div>
       <div class="step" id="s2">
-        <div class="h"><span class="n"><span>2</span><span id="s2h">12초 허브 음성 &amp; 생체 검증</span></span><span class="st" id="s2t">대기 중</span></div>
-        <p>허브 스피커 음성 안내 출력 및 미세 호흡/움직임 가중치 판단</p>
+        <div class="h"><span class="n"><span>2</span><span id="s2h">12초 음성 안내 &amp; 기립 확인</span></span><span class="st" id="s2t">대기 중</span></div>
+        <p>중앙 컨트롤 스피커로 음성 안내 · 유예 시간 안에 일어나면 오탐지로 자동 해제</p>
         <div class="bar"><i id="s2bar"></i></div>
       </div>
       <div class="step" id="s3">
@@ -787,15 +788,15 @@ html:not(.role-admin) #view-profile :is(input,select,textarea){border-color:tran
         <div class="ph">
           <div class="tt">
             <div class="ico" style="background:rgba(129,140,248,.16);color:#818CF8;border:1px solid rgba(129,140,248,.4)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 3v18h18M7 15l4-5 3 3 5-6"/></svg></div>
-            <div><h3 id="hChart">높이(Z축) 궤적 및 생체 호흡 신호</h3><p>mmWave 미세 위상 변이에 기반한 실시간 호흡 수치 모니터링</p></div>
+            <div><h3 id="hChart">높이(Z축) 궤적</h3><p>레이더가 잰 실측 높이 · 빨간 점선 아래로 내려가면 낙상 의심</p></div>
           </div>
           <div class="vit">
             <div><b id="vz" style="color:#5EEAD4;text-shadow:0 0 10px rgba(45,212,191,.6)">1.72</b><small>Z 높이 (m)</small></div>
-            <div><b id="vb" style="color:#A5B4FC;text-shadow:0 0 10px rgba(129,140,248,.6)">16</b><small>미세 호흡 (bpm)</small></div>
+            <div class="sim-only"><b id="vb" style="color:#A5B4FC;text-shadow:0 0 10px rgba(129,140,248,.6)">16</b><small>호흡 (시뮬레이션)</small></div>
           </div>
         </div>
-        <div class="chart"><canvas id="chart" role="img" aria-label="Z 높이와 호흡수 그래프"></canvas></div>
-        <div class="ckey"><span><i style="background:#2DD4BF;box-shadow:0 0 6px #2DD4BF"></i>높이 Z축 (m)</span><span><i style="background:#818CF8;box-shadow:0 0 6px #818CF8"></i>호흡 파형 (bpm)</span><span><i style="background:#F43F5E"></i>낙상 임계 <span id="thKey">0.5</span>m</span>
+        <div class="chart"><canvas id="chart" role="img" aria-label="Z 높이 그래프"></canvas></div>
+        <div class="ckey"><span><i style="background:#2DD4BF;box-shadow:0 0 6px #2DD4BF"></i>높이 Z축 (m)</span><span class="sim-only"><i style="background:#818CF8;box-shadow:0 0 6px #818CF8"></i>호흡 파형 (시뮬레이션)</span><span><i style="background:#F43F5E"></i>낙상 임계 <span id="thKey">0.5</span>m</span>
           <div class="seg zr" role="group" aria-label="그래프 기간"><button type="button" data-r="60" aria-pressed="true">1분</button><button type="button" data-r="3600" aria-pressed="false">1시간</button><button type="button" data-r="86400" aria-pressed="false">24시간</button></div></div>
       </section>
 
@@ -1732,7 +1733,7 @@ window.SWAuth = (function(){
   $('stReset').onclick = () => { C = Object.assign({}, DEF_SET); store.set('sw-settings', C); fillSettingsForm(); applySettings(); flash('stSaved'); };
   function applySettings(){
     $('s1d').textContent = `Z축 높이 급감(Z < ${C.th}m) 및 레이더 낙상 신호 감지`;
-    $('s2h').textContent = `${C.grace}초 허브 음성 & 생체 검증`;
+    $('s2h').textContent = `${C.grace}초 음성 안내 & 기립 확인`;
     $('s3d').textContent = C.auto119 ? '무반응 시 스마트폰 앱 비상 푸시 및 119 주소 전송' : '무반응 시 스마트폰 앱 비상 푸시 (119는 수동 신고)';
     $('thKey').textContent = C.th;
     $('mSub').textContent = `${C.grace}초간 유예 반응 미감지 · 최종 낙상 확정`;
@@ -2077,7 +2078,7 @@ window.SWAuth = (function(){
       ctx.font = `600 ${13*d}px "Noto Sans KR",sans-serif`;
       ctx.fillText(zpts ? '저장된 높이 기록이 아직 없습니다' : '실측 높이(Z) 신호를 기다리는 중', W/2, H/2 - 8*d);
       ctx.font = `${11*d}px "Noto Sans KR",sans-serif`;
-      ctx.fillText(zpts ? '보드가 10초마다 높이를 기록합니다 · 최근 24시간 보관' : '레이더 앞에 사람이 있으면 Z 높이 그래프가 그려집니다 · 호흡수는 MR60FDA2 미제공', W/2, H/2 + 14*d);
+      ctx.fillText(zpts ? '보드가 10초마다 높이를 기록합니다 · 최근 24시간 보관' : '레이더 앞에 사람이 있으면 Z 높이 그래프가 그려집니다', W/2, H/2 + 14*d);
       ctx.textAlign = 'start'; chartDone = true; return;
     }
     const bg = ctx.createLinearGradient(0,0,0,H); bg.addColorStop(0,'#071225'); bg.addColorStop(1,'#020617');
@@ -2088,7 +2089,7 @@ window.SWAuth = (function(){
       const y = t + h - i/5*h;
       ctx.strokeStyle = 'rgba(148,163,184,.14)'; ctx.lineWidth = d; ctx.beginPath(); ctx.moveTo(l,y); ctx.lineTo(l+w,y); ctx.stroke();
       ctx.fillStyle = '#5EEAD4'; ctx.textAlign = 'right'; ctx.fillText((i*0.5).toFixed(1), l - 7*d, y + 4*d);
-      ctx.fillStyle = '#A5B4FC'; ctx.textAlign = 'left'; ctx.fillText(String(i*6), l + w + 7*d, y + 4*d);
+      if (!REAL){ ctx.fillStyle = '#A5B4FC'; ctx.textAlign = 'left'; ctx.fillText(String(i*6), l + w + 7*d, y + 4*d); }   // 오른쪽 호흡 눈금 (시뮬레이션만)
     }
     for (let i=0;i<=6;i++){ const x = l + i/6*w; ctx.strokeStyle = 'rgba(148,163,184,.07)'; ctx.beginPath(); ctx.moveTo(x,t); ctx.lineTo(x,t+h); ctx.stroke(); }
     const ty = t + h - (C.th/2.5)*h;
