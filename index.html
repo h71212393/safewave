@@ -992,7 +992,7 @@ html:not(.role-admin) #view-profile :is(input,select,textarea){border-color:tran
       <div class="trow"><div><b id="lVoice">허브 음성 안내</b><span>유예 진입 시 스피커로 안내 멘트 송출</span></div><button type="button" class="sw" role="switch" data-k="voice" aria-labelledby="lVoice"></button></div>
       <div class="trow"><div><b id="lTg">텔레그램 봇 푸시</b><span>앱이 꺼져 있어도 보호자에게 도달</span></div><button type="button" class="sw" role="switch" data-k="tg" aria-labelledby="lTg"></button></div>
       <div class="trow"><div><b id="lPush">보호자 앱 푸시</b><span>대시보드 앱 진동 및 경고음</span></div><button type="button" class="sw" role="switch" data-k="push" aria-labelledby="lPush"></button></div>
-      <div class="trow"><div><b id="lSms">긴급 문자 자동 발송 (SMS)</b><span>긴급 확정·해제 때 비상연락처에 문자 · 저장해야 적용</span></div><button type="button" class="sw" role="switch" data-k="sms" aria-labelledby="lSms"></button></div>
+      <div class="trow"><div><b id="lSms">긴급 문자 자동 발송 (SMS)</b><span>긴급 확정·해제 때 비상연락처에 문자 · 누르면 바로 저장</span></div><button type="button" class="sw" role="switch" data-k="sms" aria-labelledby="lSms"></button></div>
       <p class="help" style="margin:6px 0 2px">문자는 보호자 앱 <b>설정 → "이 폰에서 문자 보내기"</b>를 켠 안드로이드 폰이 자기 번호로 보내요 (팀에서 한 대만). 받는 사람은 대상자 정보의 비상연락처 중 <b>자동 문자</b>를 체크한 번호예요. 시험 문자도 앱 설정에서 보내요.</p>
       <div class="trow"><div><b id="l119">119 자동 연동</b><span>끄면 보호자 확인 후 수동 신고</span></div><button type="button" class="sw" role="switch" data-k="auto119" aria-labelledby="l119"></button></div>
     </section>
@@ -1714,7 +1714,16 @@ window.SWAuth = (function(){
     $('sInst').value = C.inst; $('sTh').value = C.th; $('sGr').value = C.grace; $('sSens').value = C.sens; syncOutputs();
     document.querySelectorAll('.sw[data-k]').forEach(b => b.setAttribute('aria-checked', String(!!draftSet[b.dataset.k])));
   }
-  document.querySelectorAll('.sw[data-k]').forEach(b => b.addEventListener('click', () => { draftSet[b.dataset.k] = !draftSet[b.dataset.k]; b.setAttribute('aria-checked', String(draftSet[b.dataset.k])); }));
+  // 켜기/끄기 스위치는 누르는 즉시 저장 (맨 아래 저장 버튼을 안 눌러도 모든 화면·보호자 앱에 반영)
+  document.querySelectorAll('.sw[data-k]').forEach(b => b.addEventListener('click', () => {
+    const k = b.dataset.k;
+    draftSet[k] = !draftSet[k]; b.setAttribute('aria-checked', String(draftSet[k]));
+    C[k] = draftSet[k]; store.set('sw-settings', C); applySettings();
+    const shared = {}; Object.keys(C).forEach(x => { if (x !== 'inst') shared[x] = C[x]; });
+    shareSave({ settings: shared }, '장치 설정');
+    const lb = $(b.getAttribute('aria-labelledby')); logShared(`${lb ? lb.textContent : k} ${C[k] ? '켬' : '끔'}`, 'sys');
+    flash('stSaved');
+  }));
   $('stSave').onclick = () => {
     const prev = Object.assign({}, C);
     C = Object.assign({}, draftSet, { inst:+$('sInst').value, th:+$('sTh').value, grace:+$('sGr').value, sens:$('sSens').value });
@@ -3393,6 +3402,7 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
     });
   }
   renderNameForm();
+  applyNames();   // 기억해 둔 이름을 메뉴·화면에 바로 (Firebase 이름이 같아도 한 번은 칠해야 함)
   if (REAL) SWAuth.ready.then(() => { loadNames(); setInterval(loadNames, 15000); });
 
   function bothWorst(){
