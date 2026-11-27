@@ -3397,7 +3397,7 @@ ${q}`, { onText: ({ text }) => { out.innerHTML = head + '<div class="cur">' + md
     else if (HUB.playing === 'emergency'){ hcls = 'cr hot'; hword = '경고음'; }
     else if (HUB.playing === 'grace'){ hcls = 'wn'; hword = '안내 중'; }
     else if (HUB.silenced){ hcls = 'wn'; hword = '소리 끔'; }
-    else { hcls = 'ok'; hword = '대기'; }
+    else { hcls = 'ok'; hword = '연결'; }
     const key = parts.map(p => p.n.room + p.cls + p.word).join('|') + '|hub' + hcls + hword + HUB.ssid;
     if (box.dataset.k === key) return;   // 바뀐 게 없으면 다시 그리지 않음
     box.dataset.k = key; box.textContent = '';
